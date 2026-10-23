@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>可视化教学模型集 · 单文件版</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    display: flex; height: 100vh; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f1f5f9; color: #1e293b;
+  }
+  .sidebar {
+    flex: 0 0 280px; background: #1e293b; color: #cbd5e1;
+    display: flex; flex-direction: column; padding: 18px 12px;
+    gap: 6px; overflow-y: auto;
+  }
+  .sidebar .brand {
+    font-size: 15px; font-weight: 600; color: #f8fafc;
+    padding: 4px 10px 14px; letter-spacing: .5px;
+  }
+  .sidebar .brand small {
+    display: block; font-weight: 400; font-size: 12px;
+    color: #94a3b8; margin-top: 4px;
+  }
+  .nav-item {
+    display: block; width: 100%; text-align: left; padding: 11px 12px;
+    border: 0; border-radius: 9px; background: transparent; color: inherit;
+    font-size: 14px; font-family: inherit; cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .nav-item .name { font-weight: 500; }
+  .nav-item .desc {
+    display: block; font-size: 12px; color: #94a3b8; margin-top: 3px;
+  }
+  .nav-item:hover { background: #334155; color: #f1f5f9; }
+  .nav-item:hover .desc { color: #cbd5e1; }
+  .nav-item.active { background: #2563eb; color: #fff; }
+  .nav-item.active .desc { color: #dbeafe; }
+  .sidebar .footer {
+    margin-top: auto; padding: 14px 10px 4px;
+    font-size: 12px; color: #64748b; line-height: 1.6;
+  }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; gap: 12px; padding: 12px 18px;
+    background: #fff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+  }
+  .topbar h2 { font-size: 15px; font-weight: 600; }
+  .topbar .sub { font-size: 12px; color: #64748b; margin-left: 2px; }
+  .topbar .spacer { flex: 1; }
+  .btn {
+    padding: 7px 14px; font-size: 13px; font-family: inherit;
+    border: 1px solid #cbd5e1; background: #fff; color: #334155;
+    border-radius: 7px; cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover { background: #f1f5f9; }
+  .stage { flex: 1; position: relative; background: #fff; min-height: 0; }
+  .frame-wrap { position: absolute; inset: 0; display: none; }
+  .frame-wrap.active { display: block; }
+  iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .loading {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; gap: 10px; background: #fff;
+    color: #64748b; font-size: 14px; transition: opacity .3s; z-index: 2;
+  }
+  .loading.hide { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid #cbd5e1;
+    border-top-color: #2563eb; border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 760px) {
+    body { flex-direction: column; }
+    .sidebar {
+      flex: 0 0 auto; flex-direction: row; overflow-x: auto;
+      overflow-y: hidden; padding: 10px; gap: 8px; align-items: center;
+    }
+    .sidebar .brand, .sidebar .footer { display: none; }
+    .nav-item { white-space: nowrap; width: auto; padding: 8px 12px; }
+    .nav-item .desc { display: none; }
+    .topbar .sub { display: none; }
+    .btn { padding: 6px 10px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    可视化教学模型
+    <small>选择一个模型开始</small>
+  </div>
+  <nav id="menu"></nav>
+  <div class="footer" id="footer"></div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <h2 id="title">请选择模型</h2>
+    <span class="sub" id="subtitle"></span>
+    <div class="spacer"></div>
+    <button class="btn" id="reload">重新加载</button>
+    <button class="btn" id="fullscreen">全屏</button>
+  </div>
+  <div class="stage" id="stage"></div>
+</main>
+
+<!-- ============================================================
+     模型源码存储区（隐藏）。textarea 中的 </script> 不会被解析，
+     只有 </textarea> 才会终止标签。
+     ============================================================ -->
+<textarea id="model1" style="display:none">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>晶体结构 · 晶面晶向 (移动版)</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Microsoft YaHei", "苹方", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #ffffff;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+    #info {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #222;
+      padding: 10px 14px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      pointer-events: none;
+      z-index: 15;
+      font-size: 0.8rem;
+    }
+    #info h2 {
+      margin: 0 0 4px;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+    #info p {
+      margin: 0;
+      font-size: 0.7rem;
+      opacity: 0.8;
+    }
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 270px;
+      max-width: 85vw;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 20px;
+      overflow-y: auto;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateX(0);
+      border-left: 1px solid rgba(0,0,0,0.1);
+    }
+    .side-panel.hidden {
+      transform: translateX(100%);
+    }
+    .side-panel::-webkit-scrollbar {
+      width: 4px;
+    }
+    .side-panel::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-group label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      color: #555;
+    }
+    select, input {
+      background: rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: #111;
+      font-size: 0.9rem;
+      outline: none;
+      transition: 0.2s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    select {
+      cursor: pointer;
+    }
+    input:focus, select:focus {
+      border-color: #5aa9e6;
+      background: rgba(0,0,0,0.08);
+      box-shadow: 0 0 8px rgba(90,169,230,0.4);
+    }
+    .index-row {
+      display: flex;
+      gap: 6px;
+    }
+    .index-row input {
+      flex: 1;
+      min-width: 0;
+    }
+    button {
+      background: #5aa9e6;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      color: white;
+      font-weight: bold;
+      font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 4px 10px rgba(90,169,230,0.3);
+      width: 100%;
+      margin-top: 5px;
+    }
+    button:hover {
+      background: #4090d0;
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    .view-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 5px;
+    }
+    .view-btn {
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #333;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: 0.2s;
+      flex: 1 1 auto;
+      white-space: nowrap;
+    }
+    .view-btn.active {
+      background: #5aa9e6;
+      color: white;
+      border-color: #5aa9e6;
+    }
+    .disabled-input {
+      opacity: 0.5;
+      pointer-events: none;
+      background: rgba(0,0,0,0.02);
+    }
+    .toggle-panel-btn {
+      position: fixed;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 25;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: #333;
+      transition: all 0.3s;
+      padding: 0;
+    }
+    .toggle-panel-btn.panel-hidden {
+      right: 12px;
+    }
+    .toggle-panel-btn span {
+      transition: transform 0.3s;
+    }
+    .side-panel.hidden ~ .toggle-panel-btn span {
+      transform: rotate(180deg);
+    }
+    @media (max-width: 600px) {
+      .side-panel {
+        width: 250px;
+        padding: 15px 12px;
+        gap: 15px;
+      }
+      #info {
+        top: 8px;
+        left: 8px;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h2>🧪 晶体结构 · 晶面 &amp; 晶向</h2>
+    <p>拖动旋转 | 缩放 | 平移<br>坐标轴：<span style="color:#ff5555">X(红)</span> <span style="color:#55aa55">Y(绿)</span> <span style="color:#5555ff">Z(蓝)</span></p>
+  </div>
+  <div class="side-panel" id="sidePanel">
+    <div class="control-group">
+      <label>晶体结构</label>
+      <select id="structureSelect">
+        <option value="SC">简单立方 SC</option>
+        <option value="BCC">体心立方 BCC</option>
+        <option value="FCC" selected>面心立方 FCC</option>
+        <option value="HCP">六方密堆积 HCP</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>晶面指数 (h k i l)</label>
+      <div class="index-row">
+        <input id="planeH" type="number" value="1" step="1" placeholder="h">
+        <input id="planeK" type="number" value="1" step="1" placeholder="k">
+        <input id="planeI" type="number" value="-1" step="1" placeholder="i" disabled>
+        <input id="planeL" type="number" value="0" step="1" placeholder="l">
+      </div>
+    </div>
+    <div class="control-group">
+      <label>晶向指数 [U V T W]</label>
+      <div class="index-row">
+        <input id="dirU" type="number" value="1" step="1" placeholder="U">
+        <input id="dirV" type="number" value="1" step="1" placeholder="V">
+        <input id="dirT" type="number" value="-1" step="1" placeholder="T" disabled>
+        <input id="dirW" type="number" value="1" step="1" placeholder="W">
+      </div>
+    </div>
+    <button id="updateBtn">更新演示</button>
+    <div class="view-buttons">
+      <button class="view-btn active" data-view="default">默认</button>
+      <button class="view-btn" data-view="xoy">XOY</button>
+      <button class="view-btn" data-view="xoz">XOZ</button>
+      <button class="view-btn" data-view="yoz">YOZ</button>
+    </div>
+  </div>
+  <button class="toggle-panel-btn" id="togglePanelBtn">
+    <span>◀</span>
+  </button>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 20);
+    camera.position.set(2.6, 2.0, 3.8);
+    camera.lookAt(0.5, 0.5, 0.5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0.5, 0.5, 0.5);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.update();
+    const ambientLight = new THREE.AmbientLight(0x888888);
+    scene.add(ambientLight);
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+    dirLight1.position.set(1, 2, 1);
+    scene.add(dirLight1);
+    const dirLight2 = new THREE.DirectionalLight(0xccddff, 0.7);
+    dirLight2.position.set(-1, 0.5, -0.5);
+    scene.add(dirLight2);
+    const cellGroup = new THREE.Group();
+    const atomGroup = new THREE.Group();
+    const planeGroup = new THREE.Group();
+    const dirGroup = new THREE.Group();
+    const axisGroup = new THREE.Group();
+    scene.add(cellGroup);
+    scene.add(atomGroup);
+    scene.add(planeGroup);
+    scene.add(dirGroup);
+    scene.add(axisGroup);
+    function createAxis() {
+      axisGroup.clear();
+      const length = 1.25;
+      const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), length, 0xff5555, 0.12, 0.08);
+      const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), length, 0x55aa55, 0.12, 0.08);
+      const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), length, 0x5555ff, 0.12, 0.08);
+      axisGroup.add(arrowX); axisGroup.add(arrowY); axisGroup.add(arrowZ);
+      function makeLabel(text, pos, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, 32, 32);
+        const texture = new THREE.CanvasTexture(canvas); texture.minFilter = THREE.LinearFilter;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false }));
+        sprite.position.copy(pos); sprite.scale.set(0.25,0.25,1);
+        return sprite;
+      }
+      axisGroup.add(makeLabel('X', new THREE.Vector3(length+0.15, -0.1, 0), '#cc3333'));
+      axisGroup.add(makeLabel('Y', new THREE.Vector3(0, length+0.15, 0), '#33aa33'));
+      axisGroup.add(makeLabel('Z', new THREE.Vector3(0, -0.1, length+0.15), '#3333cc'));
+    }
+    createAxis();
+    const cOverA = 1.633;
+    const cubeVertices = [[0,0,0],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[1,1,1]];
+    const cubeEdges = [[0,1],[0,2],[0,3],[1,4],[1,5],[2,4],[2,6],[3,5],[3,6],[4,7],[5,7],[6,7]];
+    function getHexPrismVertices() {
+      const v = [];
+      for (let i=0; i<6; i++) {
+        const a = i*Math.PI/3;
+        v.push([Math.cos(a), Math.sin(a), 0], [Math.cos(a), Math.sin(a), cOverA]);
+      }
+      return v;
+    }
+    function getHexPrismEdges() {
+      const e = [];
+      for (let i=0; i<6; i++) {
+        e.push([2*i, 2*((i+1)%6)], [2*i+1, 2*((i+1)%6)+1], [2*i, 2*i+1]);
+      }
+      return e;
+    }
+    const structures = {
+      SC: {
+        name:'SC', type:'cubic', basis:[[0,0,0]],
+        cellEdges:()=>({vertices:cubeVertices, edges:cubeEdges}),
+        isInside:p=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&p.z>=0&&p.z<=1
+      },
+      BCC: {
+        name:'BCC', type:'cubic', basis:[[0,0,0],[0.5,0.5,0.5]],
+        cellEdges:()=>({vertices:cubeVertices, edges:cubeEdges}),
+        isInside:p=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&p.z>=0&&p.z<=1
+      },
+      FCC: {
+        name:'FCC', type:'cubic', basis:[[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]],
+        cellEdges:()=>({vertices:cubeVertices, edges:cubeEdges}),
+        isInside:p=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1&&p.z>=0&&p.z<=1
+      },
+      HCP: {
+        name:'HCP', type:'hexagonal', basis:[[0,0,0],[1/3,2/3,0.5]],
+        M:new THREE.Matrix3().set(1,-0.5,0, 0,Math.sqrt(3)/2,0, 0,0,cOverA),
+        invM:new THREE.Matrix3().set(1,1/Math.sqrt(3),0, 0,2/Math.sqrt(3),0, 0,0,1/cOverA),
+        cellEdges:()=>({vertices:getHexPrismVertices(), edges:getHexPrismEdges()}),
+        isInside:p=>{
+          if(p.z<0||p.z>cOverA) return false;
+          const f = cartToFrac(p, structures.HCP);
+          return f.x>=0 && f.y>=0 && f.x+f.y<=1 && f.z>=0 && f.z<=1;
+        }
+      }
+    };
+    function fracToCart(frac, struct) {
+      if(struct.type==='cubic') return new THREE.Vector3(frac[0],frac[1],frac[2]);
+      return new THREE.Vector3(frac[0],frac[1],frac[2]).applyMatrix3(struct.M);
+    }
+    function cartToFrac(cart, struct) {
+      if(struct.type==='cubic') return cart.clone();
+      return cart.clone().applyMatrix3(struct.invM);
+    }
+    function drawCellFrame(struct) {
+      cellGroup.clear();
+      const {vertices, edges} = struct.cellEdges();
+      const pts = [];
+      edges.forEach(([i,j]) => {
+        pts.push(new THREE.Vector3(vertices[i][0],vertices[i][1],vertices[i][2]));
+        pts.push(new THREE.Vector3(vertices[j][0],vertices[j][1],vertices[j][2]));
+      });
+      cellGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x336699})));
+    }
+    function drawAtoms(struct) {
+      atomGroup.clear();
+      const g = new THREE.SphereGeometry(0.1,32,16);
+      struct.basis.forEach(pos => {
+        const cart = fracToCart(pos, struct);
+        const mat = new THREE.MeshPhongMaterial({color:0x3399ff, emissive:0x001122, shininess:30, transparent:true, opacity:0.9});
+        const sphere = new THREE.Mesh(g, mat);
+        sphere.position.copy(cart);
+        sphere.userData = {originalColor:0x3399ff};
+        atomGroup.add(sphere);
+      });
+    }
+    function intersectPlaneCubic(h,k,l) {
+      const v = cubeVertices, e = cubeEdges;
+      let d=1;
+      const vals = v.map(p=>h*p[0]+k*p[1]+l*p[2]);
+      const min=Math.min(...vals), max=Math.max(...vals);
+      if(d<min||d>max) for(let a=2;a<=5;a++){if(a>=min&&a<=max){d=a;break;} if(-a>=min&&-a<=max){d=-a;break;}}
+      const pts=[];
+      e.forEach(([i,j])=>{
+        const p0=v[i],p1=v[j], v0=h*p0[0]+k*p0[1]+l*p0[2], v1=h*p1[0]+k*p1[1]+l*p1[2];
+        if(Math.abs(v1-v0)<1e-9)return;
+        const t=(d-v0)/(v1-v0);
+        if(t>=0&&t<=1) pts.push([p0[0]+t*(p1[0]-p0[0]), p0[1]+t*(p1[1]-p0[1]), p0[2]+t*(p1[2]-p0[2])]);
+      });
+      if(pts.length<3)return null;
+      const c=[0,0,0]; pts.forEach(p=>{c[0]+=p[0];c[1]+=p[1];c[2]+=p[2];}); c[0]/=pts.length;c[1]/=pts.length;c[2]/=pts.length;
+      const n=new THREE.Vector3(h,k,l).normalize();
+      pts.sort((a,b)=>{
+        const va=new THREE.Vector3(a[0]-c[0],a[1]-c[1],a[2]-c[2]), vb=new THREE.Vector3(b[0]-c[0],b[1]-c[1],b[2]-c[2]);
+        return Math.atan2(va.clone().cross(n).length()*Math.sign(va.clone().cross(n).dot(va)), va.dot(va)) - Math.atan2(vb.clone().cross(n).length()*Math.sign(vb.clone().cross(n).dot(vb)), vb.dot(vb));
+      });
+      return {polygon:pts, d, coeffs:{A:h,B:k,C:l,D:d}};
+    }
+    function intersectPlaneHex(h,k,l,struct) {
+      const verts=getHexPrismVertices(), edges=getHexPrismEdges();
+      let d=1;
+      const vals=verts.map(v=>{const f=cartToFrac(new THREE.Vector3(v[0],v[1],v[2]),struct); return h*f.x+k*f.y+l*f.z;});
+      const min=Math.min(...vals),max=Math.max(...vals);
+      if(d<min||d>max) for(let a=2;a<=5;a++){if(a>=min&&a<=max){d=a;break;} if(-a>=min&&-a<=max){d=-a;break;}}
+      const pts=[];
+      edges.forEach(([i,j])=>{
+        const p0=verts[i],p1=verts[j];
+        const f0=cartToFrac(new THREE.Vector3(p0[0],p0[1],p0[2]),struct), f1=cartToFrac(new THREE.Vector3(p1[0],p1[1],p1[2]),struct);
+        const v0=h*f0.x+k*f0.y+l*f0.z, v1=h*f1.x+k*f1.y+l*f1.z;
+        if(Math.abs(v1-v0)<1e-9)return;
+        const t=(d-v0)/(v1-v0);
+        if(t>=0&&t<=1) pts.push([p0[0]+t*(p1[0]-p0[0]),p0[1]+t*(p1[1]-p0[1]),p0[2]+t*(p1[2]-p0[2])]);
+      });
+      if(pts.length<3)return null;
+      const inv=struct.invM.elements;
+      const A=h*inv[0]+k*inv[3]+l*inv[6], B=h*inv[1]+k*inv[4]+l*inv[7], C=h*inv[2]+k*inv[5]+l*inv[8];
+      const n=new THREE.Vector3(A,B,C).normalize();
+      const center=new THREE.Vector3(0,0,0); pts.forEach(p=>center.add(new THREE.Vector3(p[0],p[1],p[2]))); center.divideScalar(pts.length);
+      pts.sort((a,b)=>{
+        const va=new THREE.Vector3(a[0]-center.x,a[1]-center.y,a[2]-center.z), vb=new THREE.Vector3(b[0]-center.x,b[1]-center.y,b[2]-center.z);
+        return Math.atan2(new THREE.Vector3().crossVectors(va,vb).dot(n), va.dot(vb));
+      });
+      return {polygon:pts, d, coeffs:{A,B,C,D:d}};
+    }
+    function updatePlane(h,k,l,struct) {
+      planeGroup.clear();
+      const res = struct.type==='cubic'? intersectPlaneCubic(h,k,l) : intersectPlaneHex(h,k,l,struct);
+      if(!res) return;
+      const {polygon, coeffs} = res;
+      const verts=[]; polygon.forEach(p=>verts.push(p[0],p[1],p[2]));
+      const idxs=[]; for(let i=1;i<polygon.length-1;i++) idxs.push(0,i,i+1);
+      const geom=new THREE.BufferGeometry();
+      geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+      geom.setIndex(idxs); geom.computeVertexNormals();
+      const mat=new THREE.MeshPhongMaterial({color:0xff8800, side:THREE.DoubleSide, transparent:true, opacity:0.4, emissive:0x331100, depthWrite:false});
+      planeGroup.add(new THREE.Mesh(geom,mat));
+      const {A,B,C,D}=coeffs; const norm=Math.sqrt(A*A+B*B+C*C); const tol=0.06;
+      atomGroup.children.forEach(s=>{
+        const dist=Math.abs(A*s.position.x+B*s.position.y+C*s.position.z-D)/norm;
+        if(dist<tol){ s.material.color.setHex(0xff5500); s.material.emissive.setHex(0x331100); s.scale.set(1.5,1.5,1.5); }
+        else { s.material.color.setHex(s.userData.originalColor||0x3399ff); s.material.emissive.setHex(0x001122); s.scale.set(1,1,1); }
+      });
+    }
+    function updateDirection(u,v,w,struct) {
+      dirGroup.clear();
+      let dirCart;
+      if(struct.type==='cubic') dirCart=new THREE.Vector3(u,v,w);
+      else { const T=-(u+v); dirCart=new THREE.Vector3(1.5*u, (u+2*v)*Math.sqrt(3)/2, w*cOverA); }
+      if(dirCart.length()<1e-9)return;
+      const origin=new THREE.Vector3(0,0,0), dir=dirCart.clone().normalize();
+      let tMax=10;
+      for(let step=0.01;step<5;step+=0.02) if(!struct.isInside(origin.clone().add(dir.clone().multiplyScalar(step)))) { tMax=step-0.01; break; }
+      if(tMax<0.01)return;
+      dirGroup.add(new THREE.ArrowHelper(dir, origin, tMax, 0x22aa44, 0.15, 0.09));
+      const tol=0.09;
+      atomGroup.children.forEach(s=>{
+        const vec=s.position.clone().sub(origin), proj=vec.dot(dir);
+        if(proj<-0.05||proj>tMax+0.05)return;
+        if(s.position.distanceTo(origin.clone().add(dir.clone().multiplyScalar(proj)))<tol){
+          s.material.color.setHex(0x22aa44); s.material.emissive.setHex(0x002211); s.scale.set(1.5,1.5,1.5);
+        }
+      });
+    }
+    function animateCamera(targetPos, targetLook) {
+      const startPos=camera.position.clone(), startTarget=controls.target.clone();
+      const endPos=targetPos.clone(), endTarget=targetLook.clone();
+      const startTime=performance.now();
+      function step(now){
+        const t=Math.min((now-startTime)/400, 1);
+        const ease=t*(2-t);
+        camera.position.lerpVectors(startPos, endPos, ease);
+        controls.target.lerpVectors(startTarget, endTarget, ease);
+        controls.update();
+        if(t<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    function setView(viewName) {
+      const c=new THREE.Vector3(0.5,0.5,0.5);
+      let pos;
+      if(viewName==='xoy') pos=new THREE.Vector3(0.5,0.5,2.8);
+      else if(viewName==='xoz') pos=new THREE.Vector3(0.5,2.8,0.5);
+      else if(viewName==='yoz') pos=new THREE.Vector3(2.8,0.5,0.5);
+      else pos=new THREE.Vector3(2.6,2.0,3.8);
+      animateCamera(pos, c);
+      document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector(`.view-btn[data-view="${viewName}"]`)?.classList.add('active');
+    }
+    const sidePanel = document.getElementById('sidePanel');
+    const toggleBtn = document.getElementById('togglePanelBtn');
+    toggleBtn.addEventListener('click', ()=>{
+      sidePanel.classList.toggle('hidden');
+      if(sidePanel.classList.contains('hidden')) {
+        toggleBtn.querySelector('span').textContent = '▶';
+      } else {
+        toggleBtn.querySelector('span').textContent = '◀';
+      }
+    });
+    let currentStructure = 'FCC';
+    function refreshScene() {
+      const struct = structures[currentStructure];
+      drawCellFrame(struct);
+      drawAtoms(struct);
+      const h=parseInt(document.getElementById('planeH').value)||0;
+      const k=parseInt(document.getElementById('planeK').value)||0;
+      const l=parseInt(document.getElementById('planeL').value)||0;
+      updatePlane(h,k,l,struct);
+      const u=parseInt(document.getElementById('dirU').value)||0;
+      const v=parseInt(document.getElementById('dirV').value)||0;
+      const w=parseInt(document.getElementById('dirW').value)||0;
+      updateDirection(u,v,w,struct);
+    }
+    document.getElementById('structureSelect').addEventListener('change', e=>{
+      currentStructure=e.target.value;
+      const isHCP = currentStructure==='HCP';
+      document.getElementById('planeI').disabled=!isHCP;
+      document.getElementById('dirT').disabled=!isHCP;
+      if(!isHCP){ document.getElementById('planeI').value=0; document.getElementById('dirT').value=0; }
+      refreshScene();
+    });
+    function autoSetIandT(){
+      if(currentStructure==='HCP'){
+        const h=parseInt(document.getElementById('planeH').value)||0, k=parseInt(document.getElementById('planeK').value)||0;
+        document.getElementById('planeI').value = -(h+k);
+        const u=parseInt(document.getElementById('dirU').value)||0, v=parseInt(document.getElementById('dirV').value)||0;
+        document.getElementById('dirT').value = -(u+v);
+      }
+    }
+    ['planeH','planeK','dirU','dirV'].forEach(id=>document.getElementById(id).addEventListener('input',autoSetIandT));
+    document.getElementById('updateBtn').addEventListener('click', refreshScene);
+    document.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click', ()=>setView(b.dataset.view)));
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    document.getElementById('planeI').disabled=true;
+    document.getElementById('dirT').disabled=true;
+    refreshScene();
+    setView('default');
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+</textarea>
+
+<textarea id="model2" style="display:none">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>α-Fe晶体结构可视化 - 异类原子与局部畸变版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #ffffff; color: #333333; line-height: 1.6; min-height: 100vh; overflow: hidden; }
+        .container { display: flex; height: 100vh; width: 100vw; position: relative; }
+        .visualization-section { flex: 1; background: #ffffff; display: flex; flex-direction: column; padding: 20px; overflow: hidden; position: relative; }
+        .header { text-align: center; padding: 10px 0; border-bottom: 1px solid #e0e0e0; margin-bottom: 15px; flex-shrink: 0; }
+        h1 { font-size: 2.2rem; margin-bottom: 5px; color: #0066cc; }
+        .subtitle { font-size: 1rem; color: #666666; }
+        .canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #ffffff; border-radius: 8px; border: 1px solid #e0e0e0; position: relative; }
+        canvas { background-color: #ffffff; display: block; max-width: 100%; max-height: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        .legend { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 0; border-top: 1px solid #e0e0e0; margin-top: 15px; flex-shrink: 0; justify-content: center; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .color-sample { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.1); }
+        .shape-sample { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .control-panel { width: 380px; background: #f8f9fa; border-left: 1px solid #e0e0e0; overflow-y: auto; transition: transform 0.3s ease; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1); z-index: 10; }
+        .control-panel.collapsed { transform: translateX(100%); }
+        .panel-toggle { position: absolute; top: 20px; right: 20px; background: #0066cc; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); transition: all 0.3s ease; }
+        .panel-toggle:hover { background: #0052a3; transform: scale(1.05); }
+        .panel-toggle.collapsed { right: 20px; transform: none; }
+        .panel-toggle.collapsed:hover { transform: scale(1.05); }
+        .section-title { font-size: 1.4rem; color: #0066cc; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; }
+        .controls { padding: 20px; }
+        .control-group { margin-bottom: 20px; background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+        label { display: block; margin-bottom: 8px; color: #555555; font-weight: 500; font-size: 0.95rem; }
+        .slider-container { display: flex; align-items: center; gap: 15px; margin-bottom: 8px; }
+        input[type="range"] { flex: 1; height: 6px; border-radius: 5px; background: #e0e0e0; outline: none; -webkit-appearance: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #0066cc; cursor: pointer; box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); }
+        .value-display { min-width: 50px; text-align: center; color: #0066cc; font-weight: bold; font-size: 0.9rem; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        input[type="checkbox"] { width: 16px; height: 16px; accent-color: #0066cc; }
+        .unit-cell-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+        .unit-cell-dimension { background: #f0f0f0; padding: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .defect-controls { background: #f0f0f0; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #e0e0e0; }
+        .motion-controls { background: #f0f0f0; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #e0e0e0; }
+        button { background: #e0e0e0; color: #333333; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-right: 8px; margin-bottom: 8px; border: 1px solid #d0d0d0; }
+        button:hover { background: #0066cc; color: #ffffff; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0, 102, 204, 0.2); }
+        button.active { background: #0066cc; color: #ffffff; }
+        button.running { background: #ff4444; color: white; }
+        .view-mode-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .defect-emphasis-control { background: #f0f0f0; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid #e0e0e0; }
+        .motion-info { margin-top: 10px; font-size: 0.85rem; color: #666666; line-height: 1.5; }
+        .info-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .info-label { font-weight: 500; }
+        .info-value { font-weight: bold; color: #0066cc; }
+        .activation-energy-display { margin-top: 8px; padding: 8px; background: rgba(0, 102, 204, 0.1); border-radius: 4px; font-size: 0.85rem; text-align: center; border: 1px solid rgba(0, 102, 204, 0.2); }
+        .activation-energy-value { color: #ff4444; font-weight: bold; }
+        .mouse-controls-info { background: rgba(0, 102, 204, 0.1); padding: 12px; border-radius: 6px; margin-top: 15px; border: 1px solid rgba(0, 102, 204, 0.2); font-size: 0.9rem; color: #333; }
+        .mouse-controls-info h3 { color: #0066cc; margin-bottom: 8px; font-size: 1rem; }
+        .mouse-controls-info ul { padding-left: 20px; margin-top: 5px; }
+        .mouse-controls-info li { margin-bottom: 5px; }
+        .element-select { width: 100%; padding: 8px 10px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 0.9rem; background: #ffffff; cursor: pointer; color: #333; }
+        .element-select:focus { outline: none; border-color: #0066cc; box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15); }
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .control-panel { width: 100%; height: 50vh; position: absolute; bottom: 0; left: 0; transform: translateY(100%); }
+            .control-panel.collapsed { transform: translateY(100%); }
+            .control-panel:not(.collapsed) { transform: translateY(0); }
+            .panel-toggle { top: auto; bottom: 20px; right: 20px; }
+            .panel-toggle.collapsed { bottom: 20px; }
+            .unit-cell-controls { grid-template-columns: 1fr; }
+            h1 { font-size: 1.8rem; }
+            .mouse-controls-info { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="visualization-section">
+            <div class="header">
+                <h1>α-Fe晶体结构可视化</h1>
+                <p class="subtitle">异类原子替代与局部晶格畸变模拟</p>
+            </div>
+            <div class="canvas-container">
+                <canvas id="crystalCanvas"></canvas>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="color-sample" style="background-color: #ff5252;"></div><span>Fe原子</span></div>
+                <div class="legend-item"><div class="color-sample" style="background-color: #4fc3f7;"></div><span>异类原子</span></div>
+                <div class="legend-item"><div class="color-sample" style="background-color: #FFD700;"></div><span>间隙原子 (C)</span></div>
+                <div class="legend-item"><div class="color-sample" style="background-color: transparent; border: 2px solid #00CC00;"></div><span>空位缺陷</span></div>
+                <div class="legend-item"><div class="shape-sample" style="color: #0099cc;">◊</div><span>八面体间隙</span></div>
+                <div class="legend-item"><div class="shape-sample" style="color: #00aa66;">▲</div><span>四面体间隙</span></div>
+            </div>
+        </div>
+        <button class="panel-toggle" id="panelToggle">☰</button>
+        <div class="control-panel" id="controlPanel">
+            <div class="controls">
+                <h2 class="section-title">交互控制</h2>
+                <div class="mouse-controls-info">
+                    <h3>鼠标/触摸控制说明：</h3>
+                    <ul>
+                        <li><strong>左键拖动</strong>：旋转视图</li>
+                        <li><strong>右键拖动</strong>：平移视图</li>
+                        <li><strong>滚轮/双指捏合</strong>：缩放视图</li>
+                        <li><strong>双击</strong>：重置视图</li>
+                    </ul>
+                </div>
+                <div class="control-group">
+                    <label>视图模式:</label>
+                    <div class="view-mode-buttons">
+                        <button id="singleCellBtn">单晶胞视图</button>
+                        <button id="multiCellBtn" class="active">连续晶胞视图</button>
+                        <button id="defectViewBtn">缺陷运动视图</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>连续晶胞维度:</label>
+                    <div class="unit-cell-controls">
+                        <div class="unit-cell-dimension">
+                            <label for="cellsX">X方向: <span id="cellsXValue" class="value-display">3</span></label>
+                            <div class="slider-container"><input type="range" id="cellsX" min="1" max="5" value="3" step="1"></div>
+                        </div>
+                        <div class="unit-cell-dimension">
+                            <label for="cellsY">Y方向: <span id="cellsYValue" class="value-display">3</span></label>
+                            <div class="slider-container"><input type="range" id="cellsY" min="1" max="5" value="3" step="1"></div>
+                        </div>
+                        <div class="unit-cell-dimension">
+                            <label for="cellsZ">Z方向: <span id="cellsZValue" class="value-display">3</span></label>
+                            <div class="slider-container"><input type="range" id="cellsZ" min="1" max="5" value="3" step="1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>间隙位置显示:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item"><input type="checkbox" id="showOctahedralSites"><label for="showOctahedralSites">显示八面体间隙</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="showTetrahedralSites"><label for="showTetrahedralSites">显示四面体间隙</label></div>
+                    </div>
+                    <div class="defect-emphasis-control" style="margin-top: 15px;">
+                        <div class="slider-container">
+                            <label for="defectSize" style="margin-bottom: 0; min-width: 80px;">缺陷大小:</label>
+                            <input type="range" id="defectSize" min="80" max="150" value="100" step="10">
+                            <span id="defectSizeValue" class="value-display">100%</span>
+                        </div>
+                        <div class="slider-container" style="margin-top: 8px;">
+                            <label for="defectBrightness" style="margin-bottom: 0; min-width: 80px;">缺陷亮度:</label>
+                            <input type="range" id="defectBrightness" min="80" max="150" value="100" step="10">
+                            <span id="defectBrightnessValue" class="value-display">100%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>异类原子替代:</label>
+                    <div class="defect-controls">
+                        <select id="elementSelect" class="element-select" style="margin-bottom: 10px;">
+                            <option value="Ni">Ni (镍) - 较小原子半径</option>
+                            <option value="Cr">Cr (铬) - 相近原子半径</option>
+                            <option value="Mn">Mn (锰) - 相近原子半径</option>
+                            <option value="Mo">Mo (钼) - 较大原子半径</option>
+                        </select>
+                        <div style="margin-bottom: 10px;">
+                            <button id="addSubstitutionalBtn">添加异类原子</button>
+                            <button id="clearSubstitutionalBtn">清除异类原子</button>
+                        </div>
+                        <div id="substitutionalCount" style="font-size: 0.85rem; text-align: center;">异类原子数量: 0</div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>局部晶格畸变:</label>
+                    <div class="defect-emphasis-control">
+                        <div class="checkbox-group">
+                            <div class="checkbox-item"><input type="checkbox" id="showDistortion" checked><label for="showDistortion">显示畸变</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="showDisplacementVectors"><label for="showDisplacementVectors">显示位移矢量</label></div>
+                        </div>
+                        <div class="slider-container" style="margin-top: 8px;">
+                            <label for="distortionStrength" style="margin-bottom: 0; min-width: 80px;">畸变强度:</label>
+                            <input type="range" id="distortionStrength" min="0" max="50" value="10" step="1">
+                            <span id="distortionStrengthValue" class="value-display">10</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666; margin-top: 6px; line-height: 1.4;">
+                            空位使周围原子向内收缩；<br>
+                            较大异类原子使周围晶格膨胀；<br>
+                            较小异类原子使周围晶格收缩。
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>点缺陷控制:</label>
+                    <div class="defect-controls">
+                        <div style="margin-bottom: 10px;">
+                            <button id="addVacancyBtn">添加空位</button>
+                            <button id="addInterstitialBtn">添加间隙原子</button>
+                            <button id="clearDefectsBtn">清除缺陷</button>
+                        </div>
+                        <div id="defectCount" style="font-size: 0.85rem; text-align: center;">缺陷数量: 空位(0) | 间隙原子(0)</div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>缺陷运动控制:</label>
+                    <div class="motion-controls">
+                        <div style="margin-bottom: 10px;">
+                            <button id="startMotionBtn">开始运动模拟</button>
+                            <button id="stopMotionBtn" disabled>停止运动</button>
+                        </div>
+                        <div class="slider-container">
+                            <label for="temperature" style="margin-bottom: 0; min-width: 80px;">温度:</label>
+                            <input type="range" id="temperature" min="300" max="1000" value="300" step="50">
+                            <span id="temperatureValue" class="value-display">300 K</span>
+                        </div>
+                        <div class="checkbox-group" style="margin-top: 10px;">
+                            <div class="checkbox-item"><input type="checkbox" id="enableVacancyMotion" checked><label for="enableVacancyMotion">空位运动</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="enableInterstitialMotion" checked><label for="enableInterstitialMotion">间隙原子运动</label></div>
+                        </div>
+                        <div class="motion-info">
+                            <div class="info-item"><span class="info-label">运动步数:</span><span class="info-value" id="motionSteps">0</span></div>
+                            <div class="info-item"><span class="info-label">当前温度:</span><span class="info-value" id="currentTemperature">300 K</span></div>
+                        </div>
+                        <div class="activation-energy-display">
+                            <div>激活能变化:</div>
+                            <div>移动前: <span id="initialActivationEnergy" class="activation-energy-value">1.0 eV</span></div>
+                            <div>移动中: <span id="currentActivationEnergy" class="activation-energy-value">1.5 eV</span></div>
+                            <div>移动后: <span id="finalActivationEnergy" class="activation-energy-value">1.0 eV</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button id="resetView">重置视图</button>
+                    <button id="animateBtn">旋转动画</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('crystalCanvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawCrystal();
+        }
+        const cellsXSlider = document.getElementById('cellsX');
+        const cellsYSlider = document.getElementById('cellsY');
+        const cellsZSlider = document.getElementById('cellsZ');
+        const cellsXValue = document.getElementById('cellsXValue');
+        const cellsYValue = document.getElementById('cellsYValue');
+        const cellsZValue = document.getElementById('cellsZValue');
+        const showOctahedralSitesCheckbox = document.getElementById('showOctahedralSites');
+        const showTetrahedralSitesCheckbox = document.getElementById('showTetrahedralSites');
+        const elementSelect = document.getElementById('elementSelect');
+        const addSubstitutionalBtn = document.getElementById('addSubstitutionalBtn');
+        const clearSubstitutionalBtn = document.getElementById('clearSubstitutionalBtn');
+        const substitutionalCount = document.getElementById('substitutionalCount');
+        const showDistortionCheckbox = document.getElementById('showDistortion');
+        const showDisplacementVectorsCheckbox = document.getElementById('showDisplacementVectors');
+        const distortionStrengthSlider = document.getElementById('distortionStrength');
+        const distortionStrengthValue = document.getElementById('distortionStrengthValue');
+        const singleCellBtn = document.getElementById('singleCellBtn');
+        const multiCellBtn = document.getElementById('multiCellBtn');
+        const defectViewBtn = document.getElementById('defectViewBtn');
+        const addVacancyBtn = document.getElementById('addVacancyBtn');
+        const addInterstitialBtn = document.getElementById('addInterstitialBtn');
+        const clearDefectsBtn = document.getElementById('clearDefectsBtn');
+        const startMotionBtn = document.getElementById('startMotionBtn');
+        const stopMotionBtn = document.getElementById('stopMotionBtn');
+        const temperatureSlider = document.getElementById('temperature');
+        const temperatureValue = document.getElementById('temperatureValue');
+        const currentTemperature = document.getElementById('currentTemperature');
+        const enableVacancyMotionCheckbox = document.getElementById('enableVacancyMotion');
+        const enableInterstitialMotionCheckbox = document.getElementById('enableInterstitialMotion');
+        const defectSizeSlider = document.getElementById('defectSize');
+        const defectBrightnessSlider = document.getElementById('defectBrightness');
+        const defectSizeValue = document.getElementById('defectSizeValue');
+        const defectBrightnessValue = document.getElementById('defectBrightnessValue');
+        const resetViewBtn = document.getElementById('resetView');
+        const animateBtn = document.getElementById('animateBtn');
+        const defectCount = document.getElementById('defectCount');
+        const motionSteps = document.getElementById('motionSteps');
+        const initialActivationEnergy = document.getElementById('initialActivationEnergy');
+        const currentActivationEnergy = document.getElementById('currentActivationEnergy');
+        const finalActivationEnergy = document.getElementById('finalActivationEnergy');
+        const panelToggle = document.getElementById('panelToggle');
+        const controlPanel = document.getElementById('controlPanel');
+        let atoms = [];
+        let bonds = [];
+        let vacancies = [];
+        let interstitialAtoms = [];
+        let substitutionalAtoms = [];
+        let octahedralSites = [];
+        let tetrahedralSites = [];
+        let motionPaths = [];
+        let atomMotionPaths = [];
+        let movingAtoms = [];
+        let rotationAnimationId = null;
+        let isRotationAnimating = false;
+        let motionAnimationId = null;
+        let isMotionAnimating = false;
+        let motionStepCount = 0;
+        let rotationX = 30;
+        let rotationY = 30;
+        let zoom = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let centerX, centerY;
+        let cellsX = 3;
+        let cellsY = 3;
+        let cellsZ = 3;
+        let viewMode = 1;
+        let temperature = 300;
+        let defectSizeMultiplier = 1.0;
+        let defectBrightnessMultiplier = 1.0;
+        let initialActivationEnergyValue = 1.0;
+        let currentActivationEnergyValue = 1.0;
+        let maxActivationEnergyValue = 1.8;
+        let showDistortion = true;
+        let showDisplacementVectors = false;
+        let distortionStrength = 0.1;
+        const elementData = {
+            Ni: { color: '#4fc3f7', highlight: '#81d4fa', sizeFactor: 0.95 },
+            Cr: { color: '#9575cd', highlight: '#b39ddb', sizeFactor: 1.02 },
+            Mn: { color: '#ffb74d', highlight: '#ffcc80', sizeFactor: 1.05 },
+            Mo: { color: '#4db6ac', highlight: '#80cbc4', sizeFactor: 1.12 }
+        };
+        let isDragging = false;
+        let isRightDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let touchStartDistance = 0;
+        let touchStartZoom = 1.0;
+        let isPinching = false;
+        function updateViewModeButtons() {
+            singleCellBtn.classList.toggle('active', viewMode === 0);
+            multiCellBtn.classList.toggle('active', viewMode === 1);
+            defectViewBtn.classList.toggle('active', viewMode === 2);
+        }
+        function updateDefectCount() {
+            defectCount.textContent = `缺陷数量: 空位(${vacancies.length}) | 间隙原子(${interstitialAtoms.length})`;
+        }
+        function updateSubstitutionalCount() {
+            substitutionalCount.textContent = `异类原子数量: ${substitutionalAtoms.length}`;
+        }
+        function updateMotionInfo() {
+            motionSteps.textContent = motionStepCount;
+            currentTemperature.textContent = `${temperature} K`;
+            temperatureValue.textContent = `${temperature} K`;
+        }
+        function updateActivationEnergyDisplay() {
+            initialActivationEnergy.textContent = `${initialActivationEnergyValue.toFixed(2)} eV`;
+            currentActivationEnergy.textContent = `${currentActivationEnergyValue.toFixed(2)} eV`;
+            finalActivationEnergy.textContent = `${initialActivationEnergyValue.toFixed(2)} eV`;
+        }
+        function updateDefectDisplayParams() {
+            defectSizeValue.textContent = `${defectSizeMultiplier * 100}%`;
+            defectBrightnessValue.textContent = `${defectBrightnessMultiplier * 100}%`;
+        }
+        function calculateDistortion(x, y, z) {
+            if (!showDistortion || distortionStrength === 0) return { x: 0, y: 0, z: 0 };
+            let dx = 0, dy = 0, dz = 0;
+            const maxDist = 1.5;
+            vacancies.forEach(vac => {
+                const ddx = x - vac.x, ddy = y - vac.y, ddz = z - vac.z;
+                const dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+                if (dist < maxDist && dist > 0.05) {
+                    const falloff = (maxDist - dist) / maxDist;
+                    const strength = distortionStrength * falloff * 1.5;
+                    dx -= (ddx / dist) * strength;
+                    dy -= (ddy / dist) * strength;
+                    dz -= (ddz / dist) * strength;
+                }
+            });
+            substitutionalAtoms.forEach(sub => {
+                const ddx = x - sub.atom.x, ddy = y - sub.atom.y, ddz = z - sub.atom.z;
+                const dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+                if (dist < maxDist && dist > 0.05) {
+                    const falloff = (maxDist - dist) / maxDist;
+                    const sizeDiff = sub.sizeFactor - 1;
+                    const strength = distortionStrength * falloff * Math.abs(sizeDiff) * 10;
+                    if (sizeDiff > 0) {
+                        dx += (ddx / dist) * strength;
+                        dy += (ddy / dist) * strength;
+                        dz += (ddz / dist) * strength;
+                    } else {
+                        dx -= (ddx / dist) * strength;
+                        dy -= (ddy / dist) * strength;
+                        dz -= (ddz / dist) * strength;
+                    }
+                }
+            });
+            interstitialAtoms.forEach(inter => {
+                const ddx = x - inter.x, ddy = y - inter.y, ddz = z - inter.z;
+                const dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+                if (dist < 1.0 && dist > 0.05) {
+                    const falloff = (1.0 - dist) / 1.0;
+                    const strength = distortionStrength * falloff * 0.8;
+                    dx += (ddx / dist) * strength;
+                    dy += (ddy / dist) * strength;
+                    dz += (ddz / dist) * strength;
+                }
+            });
+            return { x: dx, y: dy, z: dz };
+        }
+        function initCrystal() {
+            atoms = []; bonds = []; vacancies = []; interstitialAtoms = [];
+            substitutionalAtoms = []; octahedralSites = []; tetrahedralSites = [];
+            motionPaths = []; atomMotionPaths = []; movingAtoms = [];
+            motionStepCount = 0;
+            currentActivationEnergyValue = initialActivationEnergyValue;
+            if (viewMode === 0) generateSingleCell();
+            else generateMultiCell();
+            generateInterstitialSites();
+            if (viewMode === 2) addDemoDefects();
+            updateDefectCount(); updateSubstitutionalCount(); updateMotionInfo(); updateActivationEnergyDisplay();
+        }
+        function generateSingleCell() {
+            const cornerAtoms = [
+                {x: 0, y: 0, z: 0, type: 'corner', id: 0},
+                {x: 1, y: 0, z: 0, type: 'corner', id: 1},
+                {x: 0, y: 1, z: 0, type: 'corner', id: 2},
+                {x: 1, y: 1, z: 0, type: 'corner', id: 3},
+                {x: 0, y: 0, z: 1, type: 'corner', id: 4},
+                {x: 1, y: 0, z: 1, type: 'corner', id: 5},
+                {x: 0, y: 1, z: 1, type: 'corner', id: 6},
+                {x: 1, y: 1, z: 1, type: 'corner', id: 7}
+            ];
+            const centerAtom = {x: 0.5, y: 0.5, z: 0.5, type: 'center', id: 8};
+            atoms = [...cornerAtoms, centerAtom];
+            for (let i = 0; i < 8; i++) bonds.push({atom1: centerAtom, atom2: cornerAtoms[i], type: 'center-corner', fixed: true});
+            const edges = [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+            edges.forEach(edge => bonds.push({atom1: cornerAtoms[edge[0]], atom2: cornerAtoms[edge[1]], type: 'corner-corner', fixed: true}));
+        }
+        function generateMultiCell() {
+            atoms = []; bonds = [];
+            for (let cx = 0; cx < cellsX; cx++) {
+                for (let cy = 0; cy < cellsY; cy++) {
+                    for (let cz = 0; cz < cellsZ; cz++) {
+                        atoms.push({x: cx, y: cy, z: cz, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx+1, y: cy, z: cz, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx, y: cy+1, z: cz, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx+1, y: cy+1, z: cz, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx, y: cy, z: cz+1, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx+1, y: cy, z: cz+1, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx, y: cy+1, z: cz+1, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx+1, y: cy+1, z: cz+1, type: 'corner', cell: [cx, cy, cz], id: atoms.length});
+                        atoms.push({x: cx+0.5, y: cy+0.5, z: cz+0.5, type: 'center', cell: [cx, cy, cz], id: atoms.length});
+                    }
+                }
+            }
+            const centerCellX = Math.floor(cellsX / 2);
+            const centerCellY = Math.floor(cellsY / 2);
+            const centerCellZ = Math.floor(cellsZ / 2);
+            const centerCellAtoms = atoms.filter(atom => atom.cell && atom.cell[0] === centerCellX && atom.cell[1] === centerCellY && atom.cell[2] === centerCellZ);
+            const centerCornerAtoms = centerCellAtoms.filter(atom => atom.type === 'corner');
+            const edges = [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+            edges.forEach(edge => {
+                if (centerCornerAtoms[edge[0]] && centerCornerAtoms[edge[1]]) {
+                    bonds.push({atom1: centerCornerAtoms[edge[0]], atom2: centerCornerAtoms[edge[1]], type: 'corner-corner', fixed: true});
+                }
+            });
+        }
+        function generateInterstitialSites() {
+            octahedralSites = []; tetrahedralSites = [];
+            if (viewMode === 0) generateCompleteSingleCellInterstitialSites();
+            else generateMultiCellInterstitialSites();
+        }
+        function generateCompleteSingleCellInterstitialSites() {
+            const faceCenters = [
+                {x: 0.5, y: 0.5, z: 0}, {x: 0.5, y: 0.5, z: 1},
+                {x: 0.5, y: 0, z: 0.5}, {x: 0.5, y: 1, z: 0.5},
+                {x: 0, y: 0.5, z: 0.5}, {x: 1, y: 0.5, z: 0.5}
+            ];
+            const edgeCenters = [
+                {x: 0.5, y: 0, z: 0}, {x: 0.5, y: 0, z: 1}, {x: 0.5, y: 1, z: 0}, {x: 0.5, y: 1, z: 1},
+                {x: 0, y: 0.5, z: 0}, {x: 0, y: 0.5, z: 1}, {x: 1, y: 0.5, z: 0}, {x: 1, y: 0.5, z: 1},
+                {x: 0, y: 0, z: 0.5}, {x: 0, y: 1, z: 0.5}, {x: 1, y: 0, z: 0.5}, {x: 1, y: 1, z: 0.5}
+            ];
+            faceCenters.forEach(pos => octahedralSites.push({x: pos.x, y: pos.y, z: pos.z, type: 'octahedral', subtype: 'face-center'}));
+            edgeCenters.forEach(pos => octahedralSites.push({x: pos.x, y: pos.y, z: pos.z, type: 'octahedral', subtype: 'edge-center'}));
+            const bodyCenter = {x: 0.5, y: 0.5, z: 0.5};
+            const edgeMidpoints = [
+                {x: 0.5, y: 0, z: 0}, {x: 0.5, y: 1, z: 0}, {x: 0.5, y: 0, z: 1}, {x: 0.5, y: 1, z: 1},
+                {x: 0, y: 0.5, z: 0}, {x: 1, y: 0.5, z: 0}, {x: 0, y: 0.5, z: 1}, {x: 1, y: 0.5, z: 1},
+                {x: 0, y: 0, z: 0.5}, {x: 1, y: 0, z: 0.5}, {x: 0, y: 1, z: 0.5}, {x: 1, y: 1, z: 0.5}
+            ];
+            edgeMidpoints.forEach(midpoint => {
+                const dx = midpoint.x - bodyCenter.x, dy = midpoint.y - bodyCenter.y, dz = midpoint.z - bodyCenter.z;
+                tetrahedralSites.push({x: bodyCenter.x + dx * 0.75, y: bodyCenter.y + dy * 0.75, z: bodyCenter.z + dz * 0.75});
+            });
+        }
+        function generateMultiCellInterstitialSites() {
+            octahedralSites = []; tetrahedralSites = [];
+            for (let cx = 0; cx < cellsX; cx++) {
+                for (let cy = 0; cy < cellsY; cy++) {
+                    for (let cz = 0; cz < cellsZ; cz++) {
+                        const octahedralPositions = [
+                            {x: cx+0.5, y: cy+0.5, z: cz}, {x: cx+0.5, y: cy+0.5, z: cz+1},
+                            {x: cx+0.5, y: cy, z: cz+0.5}, {x: cx+0.5, y: cy+1, z: cz+0.5},
+                            {x: cx, y: cy+0.5, z: cz+0.5}, {x: cx+1, y: cy+0.5, z: cz+0.5}
+                        ];
+                        const bodyCenter = {x: cx+0.5, y: cy+0.5, z: cz+0.5};
+                        const edgeMidpoints = [
+                            {x: cx+0.5, y: cy, z: cz}, {x: cx+0.5, y: cy+1, z: cz},
+                            {x: cx+0.5, y: cy, z: cz+1}, {x: cx+0.5, y: cy+1, z: cz+1},
+                            {x: cx, y: cy+0.5, z: cz}, {x: cx+1, y: cy+0.5, z: cz},
+                            {x: cx, y: cy+0.5, z: cz+1}, {x: cx+1, y: cy+0.5, z: cz+1},
+                            {x: cx, y: cy, z: cz+0.5}, {x: cx+1, y: cy, z: cz+0.5},
+                            {x: cx, y: cy+1, z: cz+0.5}, {x: cx+1, y: cy+1, z: cz+0.5}
+                        ];
+                        octahedralPositions.forEach(pos => octahedralSites.push({x: pos.x, y: pos.y, z: pos.z, type: 'octahedral', cell: [cx, cy, cz]}));
+                        edgeMidpoints.forEach(midpoint => {
+                            const dx = midpoint.x - bodyCenter.x, dy = midpoint.y - bodyCenter.y, dz = midpoint.z - bodyCenter.z;
+                            tetrahedralSites.push({x: bodyCenter.x + dx * 0.75, y: bodyCenter.y + dy * 0.75, z: bodyCenter.z + dz * 0.75, cell: [cx, cy, cz]});
+                        });
+                    }
+                }
+            }
+        }
+        function addDemoDefects() {
+            const centerCellX = Math.floor(cellsX / 2);
+            const centerCellY = Math.floor(cellsY / 2);
+            const centerCellZ = Math.floor(cellsZ / 2);
+            const vacancyAtom = atoms.find(atom => atom.cell && atom.cell[0] === centerCellX && atom.cell[1] === centerCellY && atom.cell[2] === centerCellZ && atom.type === 'corner' && Math.abs(atom.x - centerCellX) < 0.01 && Math.abs(atom.y - centerCellY) < 0.01 && Math.abs(atom.z - centerCellZ) < 0.01);
+            if (vacancyAtom) vacancies.push({x: vacancyAtom.x, y: vacancyAtom.y, z: vacancyAtom.z, atom: vacancyAtom, id: vacancies.length, motionPath: [{x: vacancyAtom.x, y: vacancyAtom.y, z: vacancyAtom.z}], visitedPositions: new Set([`${vacancyAtom.x},${vacancyAtom.y},${vacancyAtom.z}`])});
+            const subAtom = atoms.find(atom => atom.cell && atom.cell[0] === centerCellX + 1 && atom.cell[1] === centerCellY && atom.cell[2] === centerCellZ + 1 && atom.type === 'center' && !substitutionalAtoms.some(s => s.atom === atom));
+            if (subAtom) substitutionalAtoms.push({atom: subAtom, x: subAtom.x, y: subAtom.y, z: subAtom.z, element: 'Mo', sizeFactor: elementData.Mo.sizeFactor, color: elementData.Mo.color, highlight: elementData.Mo.highlight});
+            if (octahedralSites.length > 0) {
+                const centerSites = octahedralSites.filter(site => site.cell && site.cell[0] === centerCellX && site.cell[1] === centerCellY && site.cell[2] === centerCellZ);
+                if (centerSites.length > 0) interstitialAtoms.push({x: centerSites[0].x, y: centerSites[0].y, z: centerSites[0].z, type: 'C', size: 0.8, id: interstitialAtoms.length, motionPath: [{x: centerSites[0].x, y: centerSites[0].y, z: centerSites[0].z}], visitedPositions: new Set([`${centerSites[0].x},${centerSites[0].y},${centerSites[0].z}`])});
+            }
+            updateMotionPaths();
+        }
+        function updateMotionPaths() {
+            motionPaths = [];
+            vacancies.forEach(vacancy => {
+                if (vacancy.motionPath && vacancy.motionPath.length > 1) {
+                    for (let i = 1; i < vacancy.motionPath.length; i++) motionPaths.push({type: 'vacancy', start: vacancy.motionPath[i-1], end: vacancy.motionPath[i], defectId: vacancy.id});
+                }
+            });
+            interstitialAtoms.forEach(interstitial => {
+                if (interstitial.motionPath && interstitial.motionPath.length > 1) {
+                    for (let i = 1; i < interstitial.motionPath.length; i++) motionPaths.push({type: 'interstitial', start: interstitial.motionPath[i-1], end: interstitial.motionPath[i], defectId: interstitial.id});
+                }
+            });
+            atomMotionPaths = [];
+        }
+        function addVacancy() {
+            if (atoms.length === 0) return;
+            const availableAtoms = atoms.filter(atom => !vacancies.some(v => Math.abs(v.x - atom.x) < 0.01 && Math.abs(v.y - atom.y) < 0.01 && Math.abs(v.z - atom.z) < 0.01) && !substitutionalAtoms.some(sub => sub.atom === atom));
+            if (availableAtoms.length === 0) return;
+            const atomToRemove = availableAtoms[Math.floor(Math.random() * availableAtoms.length)];
+            vacancies.push({x: atomToRemove.x, y: atomToRemove.y, z: atomToRemove.z, atom: atomToRemove, id: vacancies.length, motionPath: [{x: atomToRemove.x, y: atomToRemove.y, z: atomToRemove.z}], visitedPositions: new Set([`${atomToRemove.x},${atomToRemove.y},${atomToRemove.z}`])});
+            updateDefectCount(); updateMotionPaths(); drawCrystal();
+        }
+        function addInterstitialAtom() {
+            if (octahedralSites.length === 0) return;
+            const availableSites = octahedralSites.filter(site => !interstitialAtoms.some(i => Math.abs(i.x - site.x) < 0.01 && Math.abs(i.y - site.y) < 0.01 && Math.abs(i.z - site.z) < 0.01));
+            if (availableSites.length === 0) return;
+            const site = availableSites[Math.floor(Math.random() * availableSites.length)];
+            interstitialAtoms.push({x: site.x, y: site.y, z: site.z, type: 'C', size: 0.8, id: interstitialAtoms.length, motionPath: [{x: site.x, y: site.y, z: site.z}], visitedPositions: new Set([`${site.x},${site.y},${site.z}`])});
+            updateDefectCount(); updateMotionPaths(); drawCrystal();
+        }
+        function addSubstitutionalAtom() {
+            if (atoms.length === 0) return;
+            const element = elementSelect.value;
+            const data = elementData[element];
+            const availableAtoms = atoms.filter(atom => !substitutionalAtoms.some(sub => sub.atom === atom) && !vacancies.some(v => Math.abs(v.x - atom.x) < 0.01 && Math.abs(v.y - atom.y) < 0.01 && Math.abs(v.z - atom.z) < 0.01) && !movingAtoms.some(m => m.atom === atom));
+            if (availableAtoms.length === 0) return;
+            const centerX2 = cellsX / 2, centerY2 = cellsY / 2, centerZ2 = cellsZ / 2;
+            const sortedAtoms = [...availableAtoms].sort((a, b) => {
+                const distA = Math.sqrt(Math.pow(a.x - centerX2, 2) + Math.pow(a.y - centerY2, 2) + Math.pow(a.z - centerZ2, 2));
+                const distB = Math.sqrt(Math.pow(b.x - centerX2, 2) + Math.pow(b.y - centerY2, 2) + Math.pow(b.z - centerZ2, 2));
+                return distA - distB;
+            });
+            const topCount = Math.max(1, Math.floor(sortedAtoms.length / 3));
+            const atomToReplace = sortedAtoms[Math.floor(Math.random() * topCount)];
+            substitutionalAtoms.push({atom: atomToReplace, x: atomToReplace.x, y: atomToReplace.y, z: atomToReplace.z, element: element, sizeFactor: data.sizeFactor, color: data.color, highlight: data.highlight});
+            updateSubstitutionalCount(); drawCrystal();
+        }
+        function clearSubstitutionalAtoms() { substitutionalAtoms = []; updateSubstitutionalCount(); drawCrystal(); }
+        function clearDefects() {
+            vacancies = []; interstitialAtoms = []; motionPaths = []; atomMotionPaths = []; movingAtoms = [];
+            motionStepCount = 0; currentActivationEnergyValue = initialActivationEnergyValue;
+            updateDefectCount(); updateMotionInfo(); updateActivationEnergyDisplay(); drawCrystal();
+        }
+        function simulateVacancyMotion() {
+            if (vacancies.length === 0) return;
+            if (movingAtoms.length > 0) return;
+            vacancies.forEach(vacancy => {
+                const temperatureFactor = temperature / 300;
+                const moveProbability = 0.1 * temperatureFactor;
+                if (Math.random() >= moveProbability) return;
+                const possibleDirections = [];
+                const isCornerPosition = Math.abs(vacancy.x % 1) < 0.01 && Math.abs(vacancy.y % 1) < 0.01 && Math.abs(vacancy.z % 1) < 0.01;
+                const isCenterPosition = Math.abs(vacancy.x % 1 - 0.5) < 0.01 && Math.abs(vacancy.y % 1 - 0.5) < 0.01 && Math.abs(vacancy.z % 1 - 0.5) < 0.01;
+                if (isCornerPosition) {
+                    possibleDirections.push({dx: -1, dy: 0, dz: 0}, {dx: 0, dy: -1, dz: 0}, {dx: 0, dy: 0, dz: -1}, {dx: -0.5, dy: -0.5, dz: -0.5});
+                } else if (isCenterPosition) {
+                    possibleDirections.push({dx: -0.5, dy: -0.5, dz: -0.5}, {dx: -0.5, dy: -0.5, dz: 0.5}, {dx: -0.5, dy: 0.5, dz: -0.5}, {dx: -0.5, dy: 0.5, dz: 0.5}, {dx: 0.5, dy: -0.5, dz: -0.5}, {dx: 0.5, dy: -0.5, dz: 0.5}, {dx: 0.5, dy: 0.5, dz: -0.5}, {dx: 0.5, dy: 0.5, dz: 0.5});
+                }
+                const possibleAtoms = [];
+                possibleDirections.forEach(dir => {
+                    const atomX = vacancy.x + dir.dx, atomY = vacancy.y + dir.dy, atomZ = vacancy.z + dir.dz;
+                    const wrappedAtomX = (atomX + cellsX) % cellsX, wrappedAtomY = (atomY + cellsY) % cellsY, wrappedAtomZ = (atomZ + cellsZ) % cellsZ;
+                    const neighborAtom = atoms.find(atom => {
+                        const atomWrappedX = (atom.x + cellsX) % cellsX, atomWrappedY = (atom.y + cellsY) % cellsY, atomWrappedZ = (atom.z + cellsZ) % cellsZ;
+                        const posMatch = Math.abs(atomWrappedX - wrappedAtomX) < 0.01 && Math.abs(atomWrappedY - wrappedAtomY) < 0.01 && Math.abs(atomWrappedZ - wrappedAtomZ) < 0.01;
+                        const isSubstitutional = substitutionalAtoms.some(sub => sub.atom === atom);
+                        return posMatch && !isSubstitutional;
+                    });
+                    const hasVacancyAtAtom = vacancies.some(v => v !== vacancy && Math.abs((v.x % cellsX) - wrappedAtomX) < 0.01 && Math.abs((v.y % cellsY) - wrappedAtomY) < 0.01 && Math.abs((v.z % cellsZ) - wrappedAtomZ) < 0.01);
+                    const positionKey = `${wrappedAtomX},${wrappedAtomY},${wrappedAtomZ}`;
+                    const isRecentlyVisited = vacancy.visitedPositions && vacancy.visitedPositions.has(positionKey);
+                    if (neighborAtom && !hasVacancyAtAtom && !isRecentlyVisited) {
+                        possibleAtoms.push({atom: neighborAtom, dx: dir.dx, dy: dir.dy, dz: dir.dz, wrappedX: wrappedAtomX, wrappedY: wrappedAtomY, wrappedZ: wrappedAtomZ, positionKey: positionKey});
+                    }
+                });
+                if (possibleAtoms.length > 0) {
+                    const move = possibleAtoms[Math.floor(Math.random() * possibleAtoms.length)];
+                    const oldAtomX = move.atom.x, oldAtomY = move.atom.y, oldAtomZ = move.atom.z;
+                    const oldVacancyX = vacancy.x, oldVacancyY = vacancy.y, oldVacancyZ = vacancy.z;
+                    currentActivationEnergyValue = maxActivationEnergyValue;
+                    updateActivationEnergyDisplay();
+                    movingAtoms.push({atom: move.atom, startX: oldAtomX, startY: oldAtomY, startZ: oldAtomZ, endX: oldVacancyX, endY: oldVacancyY, endZ: oldVacancyZ, progress: 0, speed: 0.1, vacancy: vacancy, newVacancyPosition: {x: oldAtomX, y: oldAtomY, z: oldAtomZ}});
+                    const newPositionKey = `${oldAtomX % cellsX},${oldAtomY % cellsY},${oldAtomZ % cellsZ}`;
+                    vacancy.visitedPositions.add(newPositionKey);
+                    if (vacancy.visitedPositions.size > 5) {
+                        const firstKey = vacancy.visitedPositions.values().next().value;
+                        vacancy.visitedPositions.delete(firstKey);
+                    }
+                    atomMotionPaths.push({type: 'atom', start: {x: oldAtomX, y: oldAtomY, z: oldAtomZ}, end: {x: oldVacancyX, y: oldVacancyY, z: oldVacancyZ}, atomId: move.atom.id});
+                    if (atomMotionPaths.length > 50) atomMotionPaths.shift();
+                    vacancy.motionPath.push({x: oldAtomX, y: oldAtomY, z: oldAtomZ});
+                    if (vacancy.motionPath.length > 20) vacancy.motionPath.shift();
+                    motionStepCount++;
+                    return;
+                }
+            });
+            updateMotionPaths();
+        }
+        function updateMovingAtoms() {
+            for (let i = movingAtoms.length - 1; i >= 0; i--) {
+                const movingAtom = movingAtoms[i];
+                movingAtom.progress += movingAtom.speed;
+                if (movingAtom.progress >= 1) {
+                    movingAtom.atom.x = movingAtom.endX; movingAtom.atom.y = movingAtom.endY; movingAtom.atom.z = movingAtom.endZ;
+                    movingAtom.atom.x = (movingAtom.atom.x + cellsX) % cellsX;
+                    movingAtom.atom.y = (movingAtom.atom.y + cellsY) % cellsY;
+                    movingAtom.atom.z = (movingAtom.atom.z + cellsZ) % cellsZ;
+                    movingAtom.vacancy.x = movingAtom.newVacancyPosition.x; movingAtom.vacancy.y = movingAtom.newVacancyPosition.y; movingAtom.vacancy.z = movingAtom.newVacancyPosition.z;
+                    movingAtom.vacancy.x = (movingAtom.vacancy.x + cellsX) % cellsX;
+                    movingAtom.vacancy.y = (movingAtom.vacancy.y + cellsY) % cellsY;
+                    movingAtom.vacancy.z = (movingAtom.vacancy.z + cellsZ) % cellsZ;
+                    currentActivationEnergyValue = initialActivationEnergyValue;
+                    updateActivationEnergyDisplay();
+                    movingAtoms.splice(i, 1);
+                } else {
+                    const progressFactor = movingAtom.progress;
+                    currentActivationEnergyValue = maxActivationEnergyValue - (maxActivationEnergyValue - initialActivationEnergyValue) * progressFactor;
+                    updateActivationEnergyDisplay();
+                }
+            }
+        }
+        function drawMovingAtom(movingAtom, progress) {
+            const currentX = movingAtom.startX + (movingAtom.endX - movingAtom.startX) * progress;
+            const currentY = movingAtom.startY + (movingAtom.endY - movingAtom.startY) * progress;
+            const currentZ = movingAtom.startZ + (movingAtom.endZ - movingAtom.startZ) * progress;
+            const pos = project3DTo2D(currentX, currentY, currentZ);
+            const baseRadius = Math.min(canvas.width, canvas.height) / 80;
+            const radius = Math.max(6, Math.min(15, baseRadius));
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+            gradient.addColorStop(0, '#ffb74d'); gradient.addColorStop(1, '#ff9800');
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+            ctx.beginPath(); ctx.arc(pos.x - radius/3, pos.y - radius/3, radius/3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; ctx.fill();
+            const startPos = project3DTo2D(movingAtom.startX, movingAtom.startY, movingAtom.startZ);
+            const endPos = project3DTo2D(movingAtom.endX, movingAtom.endY, movingAtom.endZ);
+            ctx.strokeStyle = 'rgba(255, 152, 0, 0.5)'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+            ctx.beginPath(); ctx.moveTo(startPos.x, startPos.y); ctx.lineTo(endPos.x, endPos.y); ctx.stroke(); ctx.setLineDash([]);
+        }
+        function simulateInterstitialMotion() {
+            if (interstitialAtoms.length === 0) return;
+            interstitialAtoms.forEach(interstitial => {
+                const temperatureFactor = temperature / 300;
+                const moveProbability = 0.15 * temperatureFactor;
+                if (Math.random() >= moveProbability) return;
+                const possibleDirections = [
+                    {dx: 1, dy: 0, dz: 0}, {dx: -1, dy: 0, dz: 0}, {dx: 0, dy: 1, dz: 0}, {dx: 0, dy: -1, dz: 0}, {dx: 0, dy: 0, dz: 1}, {dx: 0, dy: 0, dz: -1},
+                    {dx: 0.5, dy: 0.5, dz: 0}, {dx: -0.5, dy: -0.5, dz: 0}, {dx: 0.5, dy: -0.5, dz: 0}, {dx: -0.5, dy: 0.5, dz: 0},
+                    {dx: 0.5, dy: 0, dz: 0.5}, {dx: -0.5, dy: 0, dz: -0.5}, {dx: 0.5, dy: 0, dz: -0.5}, {dx: -0.5, dy: 0, dz: 0.5},
+                    {dx: 0, dy: 0.5, dz: 0.5}, {dx: 0, dy: -0.5, dz: -0.5}, {dx: 0, dy: 0.5, dz: -0.5}, {dx: 0, dy: -0.5, dz: 0.5}
+                ];
+                const possibleMoves = [];
+                possibleDirections.forEach(dir => {
+                    const newX = interstitial.x + dir.dx, newY = interstitial.y + dir.dy, newZ = interstitial.z + dir.dz;
+                    const wrappedX = (newX + cellsX) % cellsX, wrappedY = (newY + cellsY) % cellsY, wrappedZ = (newZ + cellsZ) % cellsZ;
+                    const isInterstitialSite = octahedralSites.some(site => Math.abs(site.x - wrappedX) < 0.01 && Math.abs(site.y - wrappedY) < 0.01 && Math.abs(site.z - wrappedZ) < 0.01);
+                    const hasInterstitial = interstitialAtoms.some(i => i !== interstitial && Math.abs((i.x % cellsX) - wrappedX) < 0.01 && Math.abs((i.y % cellsY) - wrappedY) < 0.01 && Math.abs((i.z % cellsZ) - wrappedZ) < 0.01);
+                    const positionKey = `${wrappedX},${wrappedY},${wrappedZ}`;
+                    const isRecentlyVisited = interstitial.visitedPositions && interstitial.visitedPositions.has(positionKey);
+                    if (isInterstitialSite && !hasInterstitial && !isRecentlyVisited) {
+                        possibleMoves.push({dx: dir.dx, dy: dir.dy, dz: dir.dz, wrappedX, wrappedY, wrappedZ, positionKey: positionKey});
+                    }
+                });
+                if (possibleMoves.length > 0) {
+                    const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                    const oldX = interstitial.x, oldY = interstitial.y, oldZ = interstitial.z;
+                    interstitial.x = oldX + move.dx; interstitial.y = oldY + move.dy; interstitial.z = oldZ + move.dz;
+                    interstitial.x = (interstitial.x + cellsX) % cellsX;
+                    interstitial.y = (interstitial.y + cellsY) % cellsY;
+                    interstitial.z = (interstitial.z + cellsZ) % cellsZ;
+                    interstitial.visitedPositions.add(move.positionKey);
+                    if (interstitial.visitedPositions.size > 5) {
+                        const firstKey = interstitial.visitedPositions.values().next().value;
+                        interstitial.visitedPositions.delete(firstKey);
+                    }
+                    interstitial.motionPath.push({x: interstitial.x, y: interstitial.y, z: interstitial.z});
+                    if (interstitial.motionPath.length > 20) interstitial.motionPath.shift();
+                    motionStepCount++;
+                }
+            });
+            updateMotionPaths();
+        }
+        function simulateDefectMotionStep() {
+            if (enableVacancyMotionCheckbox.checked) simulateVacancyMotion();
+            if (enableInterstitialMotionCheckbox.checked) simulateInterstitialMotion();
+            updateMovingAtoms(); updateMotionInfo(); drawCrystal();
+        }
+        function startDefectMotion() {
+            if (isMotionAnimating) return;
+            isMotionAnimating = true;
+            startMotionBtn.disabled = true; startMotionBtn.classList.add('running'); stopMotionBtn.disabled = false;
+            function motionLoop() {
+                if (!isMotionAnimating) return;
+                simulateDefectMotionStep();
+                const frameDelay = Math.max(30, 500 - (temperature - 300) * 0.7);
+                setTimeout(() => { motionAnimationId = requestAnimationFrame(motionLoop); }, frameDelay);
+            }
+            motionLoop();
+        }
+        function stopDefectMotion() {
+            isMotionAnimating = false;
+            startMotionBtn.disabled = false; startMotionBtn.classList.remove('running'); stopMotionBtn.disabled = true;
+            if (motionAnimationId) cancelAnimationFrame(motionAnimationId);
+        }
+        function handleMouseWheel(event) {
+            event.preventDefault();
+            const delta = event.deltaY > 0 ? -0.1 : 0.1;
+            zoom = Math.max(0.3, Math.min(5.0, zoom + delta));
+            drawCrystal();
+        }
+        function project3DTo2D(x, y, z, skipDistortion = false) {
+            if (!skipDistortion && showDistortion) {
+                const disp = calculateDistortion(x, y, z);
+                x += disp.x; y += disp.y; z += disp.z;
+            }
+            centerX = canvas.width / 2 + panX;
+            centerY = canvas.height / 2 + panY;
+            x = (x - cellsX/2) * zoom * (Math.min(canvas.width, canvas.height) / 15);
+            y = (y - cellsY/2) * zoom * (Math.min(canvas.width, canvas.height) / 15);
+            z = (z - cellsZ/2) * zoom * (Math.min(canvas.width, canvas.height) / 15);
+            const radX = rotationX * Math.PI / 180;
+            const radY = rotationY * Math.PI / 180;
+            let y1 = y * Math.cos(radY) - z * Math.sin(radY);
+            let z1 = y * Math.sin(radY) + z * Math.cos(radY);
+            let x2 = x * Math.cos(radX) + z1 * Math.sin(radX);
+            let z2 = -x * Math.sin(radX) + z1 * Math.cos(radX);
+            return { x: centerX + x2, y: centerY + y1, depth: z2 };
+        }
+        function drawCrystal() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const showAtoms = true, showBonds = true, showUnitCell = true, showVacancies = true, showInterstitialAtoms = true, showMotionPaths = true, showAtomMotion = true;
+            const showOctahedralSites = showOctahedralSitesCheckbox.checked;
+            const showTetrahedralSites = showTetrahedralSitesCheckbox.checked;
+            let drawObjects = [];
+            movingAtoms.forEach(movingAtom => {
+                const currentX = movingAtom.startX + (movingAtom.endX - movingAtom.startX) * movingAtom.progress;
+                const currentY = movingAtom.startY + (movingAtom.endY - movingAtom.startY) * movingAtom.progress;
+                const currentZ = movingAtom.startZ + (movingAtom.endZ - movingAtom.startZ) * movingAtom.progress;
+                const pos = project3DTo2D(currentX, currentY, currentZ);
+                drawObjects.push({type: 'movingAtom', movingAtom: movingAtom, pos: pos, depth: pos.depth});
+            });
+            if (showAtomMotion) {
+                atomMotionPaths.forEach(path => {
+                    const pos1 = project3DTo2D(path.start.x, path.start.y, path.start.z);
+                    const pos2 = project3DTo2D(path.end.x, path.end.y, path.end.z);
+                    const avgDepth = (pos1.depth + pos2.depth) / 2;
+                    drawObjects.push({type: 'atomMotionPath', path: path, pos1: pos1, pos2: pos2, depth: avgDepth});
+                });
+            }
+            if (showMotionPaths) {
+                motionPaths.forEach(path => {
+                    const pos1 = project3DTo2D(path.start.x, path.start.y, path.start.z);
+                    const pos2 = project3DTo2D(path.end.x, path.end.y, path.end.z);
+                    const avgDepth = (pos1.depth + pos2.depth) / 2;
+                    drawObjects.push({type: 'motionPath', path: path, pos1: pos1, pos2: pos2, depth: avgDepth});
+                });
+            }
+            if (showBonds) {
+                bonds.forEach(bond => {
+                    const pos1 = project3DTo2D(bond.atom1.x, bond.atom1.y, bond.atom1.z);
+                    const pos2 = project3DTo2D(bond.atom2.x, bond.atom2.y, bond.atom2.z);
+                    const avgDepth = (pos1.depth + pos2.depth) / 2;
+                    drawObjects.push({type: 'bond', bond: bond, pos1: pos1, pos2: pos2, depth: avgDepth});
+                });
+            }
+            if (showAtoms) {
+                atoms.forEach(atom => {
+                    const isMoving = movingAtoms.some(movingAtom => movingAtom.atom === atom);
+                    if (isMoving) return;
+                    const hasVacancy = vacancies.some(v => Math.abs(v.x - atom.x) < 0.01 && Math.abs(v.y - atom.y) < 0.01 && Math.abs(v.z - atom.z) < 0.01);
+                    if (hasVacancy && showVacancies) return;
+                    const sub = substitutionalAtoms.find(s => s.atom === atom);
+                    const pos = project3DTo2D(atom.x, atom.y, atom.z);
+                    if (sub) drawObjects.push({type: 'substitutionalAtom', sub: sub, pos: pos, depth: pos.depth});
+                    else drawObjects.push({type: 'atom', atom: atom, pos: pos, depth: pos.depth});
+                });
+            }
+            if (showVacancies) {
+                vacancies.forEach(vacancy => {
+                    const pos = project3DTo2D(vacancy.x, vacancy.y, vacancy.z);
+                    drawObjects.push({type: 'vacancy', vacancy: vacancy, pos: pos, depth: pos.depth});
+                });
+            }
+            if (showInterstitialAtoms) {
+                interstitialAtoms.forEach(interstitial => {
+                    const pos = project3DTo2D(interstitial.x, interstitial.y, interstitial.z);
+                    drawObjects.push({type: 'interstitial', interstitial: interstitial, pos: pos, depth: pos.depth});
+                });
+            }
+            if (showOctahedralSites) {
+                octahedralSites.forEach(site => {
+                    const pos = project3DTo2D(site.x, site.y, site.z);
+                    drawObjects.push({type: 'octahedralSite', site: site, pos: pos, depth: pos.depth});
+                });
+            }
+            if (showTetrahedralSites) {
+                tetrahedralSites.forEach(site => {
+                    const pos = project3DTo2D(site.x, site.y, site.z);
+                    drawObjects.push({type: 'tetrahedralSite', site: site, pos: pos, depth: pos.depth});
+                });
+            }
+            drawObjects.sort((a, b) => a.depth - b.depth);
+            drawObjects.forEach(obj => {
+                switch(obj.type) {
+                    case 'movingAtom': drawMovingAtom(obj.movingAtom, obj.movingAtom.progress); break;
+                    case 'atomMotionPath': drawAtomMotionPath(obj.path, obj.pos1, obj.pos2); break;
+                    case 'motionPath': drawMotionPath(obj.path, obj.pos1, obj.pos2); break;
+                    case 'bond': drawBond(obj.bond, obj.pos1, obj.pos2); break;
+                    case 'atom': drawAtom(obj.atom, obj.pos); break;
+                    case 'substitutionalAtom': drawSubstitutionalAtom(obj.sub, obj.pos); break;
+                    case 'vacancy': drawVacancy(obj.vacancy, obj.pos); break;
+                    case 'interstitial': drawInterstitial(obj.interstitial, obj.pos); break;
+                    case 'octahedralSite': drawOctahedralSite(obj.site, obj.pos); break;
+                    case 'tetrahedralSite': drawTetrahedralSite(obj.site, obj.pos); break;
+                }
+            });
+            if (showUnitCell) drawUnitCell();
+        }
+        function drawSubstitutionalAtom(sub, pos) {
+            const baseRadius = Math.min(canvas.width, canvas.height) / 80;
+            const radius = Math.max(6, Math.min(15, baseRadius)) * sub.sizeFactor;
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+            gradient.addColorStop(0, sub.highlight); gradient.addColorStop(1, sub.color);
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+            ctx.beginPath(); ctx.arc(pos.x - radius/3, pos.y - radius/3, radius/3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.font = `bold ${Math.max(9, Math.min(14, radius * 1.2))}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sub.element, pos.x, pos.y);
+            if (showDisplacementVectors && showDistortion && distortionStrength > 0) {
+                const origPos = project3DTo2D(sub.atom.x, sub.atom.y, sub.atom.z, true);
+                if (Math.abs(origPos.x - pos.x) > 2 || Math.abs(origPos.y - pos.y) > 2) {
+                    ctx.strokeStyle = 'rgba(255, 87, 34, 0.7)'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(origPos.x, origPos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(origPos.x, origPos.y, 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 87, 34, 0.7)'; ctx.fill();
+                }
+            }
+        }
+        function drawAtomMotionPath(path, pos1, pos2) {
+            ctx.strokeStyle = 'rgba(255, 153, 0, 0.9)'; ctx.lineWidth = 3; ctx.setLineDash([5, 3]);
+            ctx.beginPath(); ctx.moveTo(pos1.x, pos1.y); ctx.lineTo(pos2.x, pos2.y); ctx.stroke(); ctx.setLineDash([]);
+        }
+        function drawMotionPath(path, pos1, pos2) {
+            ctx.strokeStyle = path.type === 'vacancy' ? 'rgba(255, 153, 0, 0.6)' : 'rgba(255, 193, 7, 0.6)';
+            ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.moveTo(pos1.x, pos1.y); ctx.lineTo(pos2.x, pos2.y); ctx.stroke(); ctx.setLineDash([]);
+        }
+        function drawBond(bond, pos1, pos2) {
+            let strokeStyle, lineWidth;
+            if (bond.type === 'center-corner') { strokeStyle = 'rgba(0, 102, 204, 0.7)'; lineWidth = 2.5; }
+            else { strokeStyle = 'rgba(100, 100, 100, 0.5)'; lineWidth = 1.5; }
+            ctx.strokeStyle = strokeStyle; ctx.lineWidth = lineWidth;
+            ctx.setLineDash(bond.type === 'corner-corner' ? [5, 3] : []);
+            ctx.beginPath(); ctx.moveTo(pos1.x, pos1.y); ctx.lineTo(pos2.x, pos2.y); ctx.stroke(); ctx.setLineDash([]);
+        }
+        function drawAtom(atom, pos) {
+            const baseRadius = Math.min(canvas.width, canvas.height) / 80;
+            const radius = Math.max(6, Math.min(15, baseRadius));
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+            gradient.addColorStop(0, '#ff8a80'); gradient.addColorStop(1, '#ff5252');
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+            ctx.beginPath(); ctx.arc(pos.x - radius/3, pos.y - radius/3, radius/3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; ctx.fill();
+            if (showDisplacementVectors && showDistortion && distortionStrength > 0) {
+                const origPos = project3DTo2D(atom.x, atom.y, atom.z, true);
+                if (Math.abs(origPos.x - pos.x) > 2 || Math.abs(origPos.y - pos.y) > 2) {
+                    ctx.strokeStyle = 'rgba(255, 87, 34, 0.7)'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(origPos.x, origPos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(origPos.x, origPos.y, 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 87, 34, 0.7)'; ctx.fill();
+                }
+            }
+        }
+        function drawVacancy(vacancy, pos) {
+            const baseRadius = Math.min(canvas.width, canvas.height) / 60;
+            const radius = Math.max(8, Math.min(18, baseRadius)) * defectSizeMultiplier;
+            const vacancyColor = `rgba(0, 204, 0, ${0.9 * defectBrightnessMultiplier})`;
+            const innerColor = `rgba(255, 255, 255, ${0.9 * defectBrightnessMultiplier})`;
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.strokeStyle = vacancyColor; ctx.lineWidth = 3; ctx.stroke();
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius * 0.7, 0, Math.PI * 2); ctx.strokeStyle = vacancyColor; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+            ctx.strokeStyle = innerColor; ctx.lineWidth = 2; const crossSize = radius * 0.5;
+            ctx.beginPath(); ctx.moveTo(pos.x - crossSize, pos.y - crossSize); ctx.lineTo(pos.x + crossSize, pos.y + crossSize); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pos.x + crossSize, pos.y - crossSize); ctx.lineTo(pos.x - crossSize, pos.y + crossSize); ctx.stroke();
+        }
+        function drawInterstitial(interstitial, pos) {
+            const baseRadius = Math.min(canvas.width, canvas.height) / 80;
+            const radius = Math.max(5, Math.min(12, baseRadius)) * interstitial.size * defectSizeMultiplier;
+            const color1 = `rgba(255, 215, 0, ${0.9 * defectBrightnessMultiplier})`;
+            const color2 = `rgba(255, 165, 0, ${0.9 * defectBrightnessMultiplier})`;
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+            gradient.addColorStop(0, color1); gradient.addColorStop(1, color2);
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, radius * 1.2, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255, 215, 0, ${0.5 * defectBrightnessMultiplier})`; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.beginPath(); ctx.arc(pos.x - radius/3, pos.y - radius/3, radius/3, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, ${0.5 * defectBrightnessMultiplier})`; ctx.fill();
+            ctx.fillStyle = '#000000'; ctx.font = `bold ${Math.max(8, Math.min(14, radius * 1.2))}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('C', pos.x, pos.y);
+        }
+        function drawOctahedralSite(site, pos) {
+            const baseSize = Math.min(canvas.width, canvas.height) / 120;
+            const size = Math.max(3, Math.min(8, baseSize));
+            let fillColor = 'rgba(0, 153, 204, 0.7)';
+            if (site.subtype === 'edge-center') fillColor = 'rgba(0, 123, 184, 0.7)';
+            ctx.fillStyle = fillColor;
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y - size); ctx.lineTo(pos.x + size, pos.y); ctx.lineTo(pos.x, pos.y + size); ctx.lineTo(pos.x - size, pos.y); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 153, 204, 1)'; ctx.lineWidth = 0.8; ctx.stroke();
+        }
+        function drawTetrahedralSite(site, pos) {
+            const baseSize = Math.min(canvas.width, canvas.height) / 120;
+            const size = Math.max(3, Math.min(8, baseSize));
+            ctx.fillStyle = 'rgba(0, 170, 102, 0.7)';
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y - size); ctx.lineTo(pos.x + size, pos.y + size/2); ctx.lineTo(pos.x - size, pos.y + size/2); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 170, 102, 1)'; ctx.lineWidth = 0.8; ctx.stroke();
+        }
+        function drawUnitCell() {
+            ctx.strokeStyle = 'rgba(0, 102, 204, 0.3)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+            if (viewMode === 0) {
+                const edges = [
+                    [[0,0,0],[1,0,0]], [[0,0,0],[0,1,0]], [[0,0,0],[0,0,1]],
+                    [[1,0,0],[1,1,0]], [[1,0,0],[1,0,1]], [[0,1,0],[1,1,0]],
+                    [[0,1,0],[0,1,1]], [[0,0,1],[1,0,1]], [[0,0,1],[0,1,1]],
+                    [[1,1,0],[1,1,1]], [[1,0,1],[1,1,1]], [[0,1,1],[1,1,1]]
+                ];
+                edges.forEach(edge => {
+                    const pos1 = project3DTo2D(edge[0][0], edge[0][1], edge[0][2], true);
+                    const pos2 = project3DTo2D(edge[1][0], edge[1][1], edge[1][2], true);
+                    ctx.beginPath(); ctx.moveTo(pos1.x, pos1.y); ctx.lineTo(pos2.x, pos2.y); ctx.stroke();
+                });
+            } else {
+                for (let cx = 0; cx <= cellsX; cx++) {
+                    for (let cy = 0; cy <= cellsY; cy++) {
+                        for (let cz = 0; cz <= cellsZ; cz++) {
+                            if (cx < cellsX && cy < cellsY && cz < cellsZ) {
+                                const edges = [
+                                    [[cx,cy,cz],[cx+1,cy,cz]], [[cx,cy,cz],[cx,cy+1,cz]], [[cx,cy,cz],[cx,cy,cz+1]],
+                                    [[cx+1,cy,cz],[cx+1,cy+1,cz]], [[cx+1,cy,cz],[cx+1,cy,cz+1]], [[cx,cy+1,cz],[cx+1,cy+1,cz]],
+                                    [[cx,cy+1,cz],[cx,cy+1,cz+1]], [[cx,cy,cz+1],[cx+1,cy,cz+1]], [[cx,cy,cz+1],[cx,cy+1,cz+1]],
+                                    [[cx+1,cy+1,cz],[cx+1,cy+1,cz+1]], [[cx+1,cy,cz+1],[cx+1,cy+1,cz+1]], [[cx,cy+1,cz+1],[cx+1,cy+1,cz+1]]
+                                ];
+                                edges.forEach(edge => {
+                                    const pos1 = project3DTo2D(edge[0][0], edge[0][1], edge[0][2], true);
+                                    const pos2 = project3DTo2D(edge[1][0], edge[1][1], edge[1][2], true);
+                                    ctx.beginPath(); ctx.moveTo(pos1.x, pos1.y); ctx.lineTo(pos2.x, pos2.y); ctx.stroke();
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            ctx.setLineDash([]);
+        }
+        function updateSliderValues() {
+            cellsXValue.textContent = cellsX; cellsYValue.textContent = cellsY; cellsZValue.textContent = cellsZ;
+            temperatureValue.textContent = `${temperature} K`;
+            distortionStrengthValue.textContent = (distortionStrength * 100).toFixed(0);
+        }
+        function handleMouseDown(e) {
+            e.preventDefault();
+            if (e.button === 0) { isDragging = true; canvas.style.cursor = 'grabbing'; }
+            else if (e.button === 2) { isRightDragging = true; canvas.style.cursor = 'move'; }
+            lastMouseX = e.clientX; lastMouseY = e.clientY;
+        }
+        function handleMouseMove(e) {
+            e.preventDefault();
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            if (isDragging) {
+                rotationY = (rotationY + deltaX * 0.5) % 360;
+                rotationX = (rotationX + deltaY * 0.5) % 360;
+                drawCrystal();
+            } else if (isRightDragging) {
+                panX += deltaX; panY += deltaY; drawCrystal();
+            }
+            lastMouseX = e.clientX; lastMouseY = e.clientY;
+        }
+        function handleMouseUp(e) {
+            e.preventDefault();
+            if (e.button === 0) isDragging = false;
+            else if (e.button === 2) isRightDragging = false;
+            canvas.style.cursor = 'grab';
+        }
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isPinching = true;
+                const touch1 = e.touches[0]; const touch2 = e.touches[1];
+                touchStartDistance = Math.sqrt(Math.pow(touch2.clientX - touch1.clientX, 2) + Math.pow(touch2.clientY - touch1.clientY, 2));
+                touchStartZoom = zoom;
+            }
+        }
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length === 1 && isDragging) {
+                const deltaX = e.touches[0].clientX - lastMouseX;
+                const deltaY = e.touches[0].clientY - lastMouseY;
+                rotationY = (rotationY + deltaX * 0.5) % 360;
+                rotationX = (rotationX + deltaY * 0.5) % 360;
+                lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY;
+                drawCrystal();
+            } else if (e.touches.length === 2 && isPinching) {
+                const touch1 = e.touches[0]; const touch2 = e.touches[1];
+                const currentDistance = Math.sqrt(Math.pow(touch2.clientX - touch1.clientX, 2) + Math.pow(touch2.clientY - touch1.clientY, 2));
+                const scaleFactor = currentDistance / touchStartDistance;
+                zoom = Math.max(0.3, Math.min(5.0, touchStartZoom * scaleFactor));
+                drawCrystal();
+            }
+        }
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            if (e.touches.length === 0) { isDragging = false; isPinching = false; }
+            else if (e.touches.length === 1) {
+                isPinching = false; isDragging = true;
+                lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY;
+            }
+        }
+        function handleDoubleClick(e) { e.preventDefault(); resetView(); }
+        function resetView() { rotationX = 30; rotationY = 30; zoom = 1.0; panX = 0; panY = 0; drawCrystal(); }
+        function initEventListeners() {
+            cellsXSlider.addEventListener('input', function() { cellsX = parseInt(this.value); updateSliderValues(); if (viewMode !== 0) { initCrystal(); drawCrystal(); } });
+            cellsYSlider.addEventListener('input', function() { cellsY = parseInt(this.value); updateSliderValues(); if (viewMode !== 0) { initCrystal(); drawCrystal(); } });
+            cellsZSlider.addEventListener('input', function() { cellsZ = parseInt(this.value); updateSliderValues(); if (viewMode !== 0) { initCrystal(); drawCrystal(); } });
+            temperatureSlider.addEventListener('input', function() { temperature = parseInt(this.value); updateMotionInfo(); });
+            defectSizeSlider.addEventListener('input', function() { defectSizeMultiplier = parseInt(this.value) / 100; updateDefectDisplayParams(); drawCrystal(); });
+            defectBrightnessSlider.addEventListener('input', function() { defectBrightnessMultiplier = parseInt(this.value) / 100; updateDefectDisplayParams(); drawCrystal(); });
+            showDistortionCheckbox.addEventListener('change', function() { showDistortion = this.checked; drawCrystal(); });
+            showDisplacementVectorsCheckbox.addEventListener('change', function() { showDisplacementVectors = this.checked; drawCrystal(); });
+            distortionStrengthSlider.addEventListener('input', function() { distortionStrength = parseInt(this.value) / 100; updateSliderValues(); drawCrystal(); });
+            showOctahedralSitesCheckbox.addEventListener('change', drawCrystal);
+            showTetrahedralSitesCheckbox.addEventListener('change', drawCrystal);
+            singleCellBtn.addEventListener('click', function() { viewMode = 0; updateViewModeButtons(); stopDefectMotion(); initCrystal(); drawCrystal(); });
+            multiCellBtn.addEventListener('click', function() { viewMode = 1; updateViewModeButtons(); stopDefectMotion(); initCrystal(); drawCrystal(); });
+            defectViewBtn.addEventListener('click', function() { viewMode = 2; updateViewModeButtons(); initCrystal(); drawCrystal(); });
+            addVacancyBtn.addEventListener('click', addVacancy);
+            addInterstitialBtn.addEventListener('click', addInterstitialAtom);
+            clearDefectsBtn.addEventListener('click', clearDefects);
+            addSubstitutionalBtn.addEventListener('click', addSubstitutionalAtom);
+            clearSubstitutionalBtn.addEventListener('click', clearSubstitutionalAtoms);
+            startMotionBtn.addEventListener('click', startDefectMotion);
+            stopMotionBtn.addEventListener('click', stopDefectMotion);
+            resetViewBtn.addEventListener('click', function() {
+                rotationX = 30; rotationY = 30; zoom = 1.0; panX = 0; panY = 0;
+                defectSizeMultiplier = 1.0; defectBrightnessMultiplier = 1.0; temperature = 300; distortionStrength = 0.1;
+                currentActivationEnergyValue = initialActivationEnergyValue;
+                defectSizeSlider.value = 100; defectBrightnessSlider.value = 100; temperatureSlider.value = 300; distortionStrengthSlider.value = 10;
+                updateSliderValues(); updateDefectDisplayParams(); updateMotionInfo(); updateActivationEnergyDisplay();
+                if (viewMode !== 0) { cellsX = 3; cellsY = 3; cellsZ = 3; cellsXSlider.value = 3; cellsYSlider.value = 3; cellsZSlider.value = 3; updateSliderValues(); }
+                stopDefectMotion(); initCrystal(); drawCrystal();
+                if (isRotationAnimating) { cancelAnimationFrame(rotationAnimationId); isRotationAnimating = false; animateBtn.textContent = "旋转动画"; }
+            });
+            animateBtn.addEventListener('click', function() {
+                if (isRotationAnimating) { cancelAnimationFrame(rotationAnimationId); isRotationAnimating = false; animateBtn.textContent = "旋转动画"; }
+                else {
+                    isRotationAnimating = true; animateBtn.textContent = "停止旋转";
+                    function animate() {
+                        rotationY = (rotationY + 1) % 360; drawCrystal();
+                        if (isRotationAnimating) rotationAnimationId = requestAnimationFrame(animate);
+                    }
+                    animate();
+                }
+            });
+            panelToggle.addEventListener('click', function() {
+                controlPanel.classList.toggle('collapsed');
+                panelToggle.classList.toggle('collapsed');
+                panelToggle.textContent = controlPanel.classList.contains('collapsed') ? '☰' : '✕';
+            });
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel, { passive: false });
+            canvas.addEventListener('dblclick', handleDoubleClick);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+            window.addEventListener('resize', resizeCanvas);
+        }
+        updateViewModeButtons();
+        resizeCanvas();
+        initCrystal();
+        initEventListeners();
+        updateSliderValues();
+        updateDefectDisplayParams();
+        updateMotionInfo();
+        updateActivationEnergyDisplay();
+        drawCrystal();
+    </script>
+</body>
+</html>
+</textarea>
+
+<textarea id="model3" style="display:none">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>螺位错 · 动态形成过程</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; font-family: 'Segoe UI', 'Arial', sans-serif; touch-action: none; }
+        #info { position: absolute; top: 15px; left: 15px; color: #b0b0c0; background: rgba(10,10,20,0.5); padding: 10px 16px; border-radius: 25px; backdrop-filter: blur(5px); border-left: 4px solid #4a6c9e; pointer-events: none; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.5); max-width: 300px; font-size: 14px; transition: opacity 0.3s; }
+        #info p { margin: 0; color: #c0d0e8; line-height: 1.4; }
+        #caption { position: absolute; bottom: 15px; right: 15px; color: #7a8aa0; background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; backdrop-filter: blur(4px); pointer-events: none; z-index: 10; transition: opacity 0.3s; }
+        #controls-hint { position: absolute; bottom: 15px; left: 15px; color: #6a7a94; background: rgba(20,20,30,0.4); padding: 4px 12px; border-radius: 20px; font-size: 12px; backdrop-filter: blur(4px); pointer-events: none; z-index: 10; transition: opacity 0.3s; }
+        #animation-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20,25,35,0.85); backdrop-filter: blur(8px); padding: 12px 18px; border-radius: 35px; display: flex; gap: 10px; align-items: center; border: 1px solid #6a5a7a; z-index: 20; box-shadow: 0 4px 20px rgba(0,0,0,0.6); pointer-events: auto; flex-wrap: wrap; justify-content: center; width: fit-content; max-width: 95vw; transition: opacity 0.3s; }
+        #animation-panel button { background: #3a5a7a; color: #d0d8e8; border: none; padding: 6px 12px; border-radius: 25px; font-size: 14px; font-weight: bold; cursor: pointer; backdrop-filter: blur(5px); border: 1px solid #6a8ab0; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); min-width: 60px; touch-action: manipulation; }
+        #animation-panel button:hover { background: #5a7a9a; }
+        #animation-panel button.toggle-on { background: #5a8a6a; border-color: #8ab09a; }
+        #animation-panel input { width: 220px; cursor: pointer; accent-color: #6a8ab0; touch-action: pan-y; }
+        #progress-label { color: #c0d0e8; font-size: 14px; min-width: 55px; text-align: center; font-weight: 500; }
+        #status-badge { color: #b0b8d0; font-size: 12px; margin-left: 2px; white-space: nowrap; }
+        #toggleUI { position: absolute; top: 15px; right: 15px; background: rgba(20,25,35,0.7); backdrop-filter: blur(5px); border: 1px solid #6a8ab0; color: #c0d0e8; font-size: 22px; width: 44px; height: 44px; border-radius: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; transition: 0.2s; box-shadow: 0 2px 10px rgba(0,0,0,0.5); user-select: none; }
+        #toggleUI:hover { background: rgba(60,70,90,0.8); color: white; }
+        #toggleUI.hidden-mode { background: rgba(10,10,15,0.5); border-color: #4a5a6a; opacity: 0.7; }
+        @media (max-width: 600px) {
+            #animation-panel { padding: 10px 12px; gap: 6px; }
+            #animation-panel input { width: 160px; }
+            #info { font-size: 12px; padding: 8px 12px; max-width: 250px; }
+            #toggleUI { width: 38px; height: 38px; font-size: 20px; top: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="info"><p>螺型位错的形成过程：在切应力作用下，原子面发生螺旋状扭转，位错线沿 Z 轴延伸，晶体发生连续剪切变形。</p></div>
+    <div id="caption">🔗 黄色键：Z向键补全 | 拖动滑块观察</div>
+    <div id="controls-hint">🖱️ 单指旋转 · 双指平移/缩放</div>
+    <div id="animation-panel">
+        <button id="playPauseBtn">▶ 播放</button>
+        <button id="resetBtn">↺ 复位</button>
+        <button id="toggleLabelsBtn" class="toggle-on">🏷️</button>
+        <input type="range" id="progressSlider" min="0" max="1" step="0.01" value="0">
+        <span id="progress-label">0%</span>
+        <span id="status-badge">⚙️完美晶体</span>
+    </div>
+    <div id="toggleUI" title="隐藏界面">👁️</div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x080810);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        document.body.appendChild(renderer.domElement);
+        const css2DRenderer = new CSS2DRenderer();
+        css2DRenderer.setSize(window.innerWidth, window.innerHeight);
+        css2DRenderer.domElement.style.position = 'absolute';
+        css2DRenderer.domElement.style.top = '0px';
+        css2DRenderer.domElement.style.left = '0px';
+        css2DRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(css2DRenderer.domElement);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 8);
+        camera.lookAt(0, 0, 1.5);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.target.set(0, 0, 1.5);
+        controls.update();
+        const ambientLight = new THREE.AmbientLight(0x404858, 0.7);
+        scene.add(ambientLight);
+        const light1 = new THREE.PointLight(0xd0d8e8, 0.8);
+        light1.position.set(5, 8, 8);
+        scene.add(light1);
+        const light2 = new THREE.PointLight(0xc8b8a0, 0.5);
+        light2.position.set(-4, 3, -4);
+        scene.add(light2);
+        const light3 = new THREE.PointLight(0x7a8fbf, 0.6);
+        light3.position.set(-2, 5, 7);
+        scene.add(light3);
+        const gridHelper = new THREE.GridHelper(8, 12, 0x4a5a7a, 0x2a3a4a);
+        gridHelper.position.y = -2.5;
+        scene.add(gridHelper);
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+        scene.fog = new THREE.FogExp2(0x080810, 0.02);
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 150;
+        const starPos = new Float32Array(starsCount * 3);
+        for (let i = 0; i < starsCount * 3; i+=3) {
+            starPos[i] = (Math.random() - 0.5) * 30;
+            starPos[i+1] = (Math.random() - 0.5) * 20;
+            starPos[i+2] = (Math.random() - 0.5) * 30;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starsMat = new THREE.PointsMaterial({color: 0x6a7a9a, size: 0.02, transparent: true});
+        const stars = new THREE.Points(starsGeo, starsMat);
+        scene.add(stars);
+        const a = 1.0;
+        const b = 1.0;
+        const atomRadius = 0.14;
+        const bondRadius = 0.022;
+        const xRange = [-3, 3];
+        const yRange = [-3, 3];
+        const zLayers = [0, 1, 2, 3, 4];
+        function screwDisplacement(x, y) {
+            return (b / (2 * Math.PI)) * Math.atan2(y, x);
+        }
+        const perfectPositions = [];
+        const latticeIndices = [];
+        for (let i = xRange[0]; i <= xRange[1]; i++) {
+            for (let j = yRange[0]; j <= yRange[1]; j++) {
+                for (let k of zLayers) {
+                    const x = i * a;
+                    const y = j * a;
+                    const z = k * a;
+                    perfectPositions.push(new THREE.Vector3(x, y, z));
+                    latticeIndices.push({i, j, k});
+                }
+            }
+        }
+        const atomCount = perfectPositions.length;
+        const finalPositions = perfectPositions.map((pos, idx) => {
+            const {i, j, k} = latticeIndices[idx];
+            const x0 = i * a, y0 = j * a, z0 = k * a;
+            return new THREE.Vector3(x0, y0, z0 + screwDisplacement(x0, y0));
+        });
+        const atomsGroup = new THREE.Group();
+        const atomMeshes = [];
+        const atomMaterial = new THREE.MeshStandardMaterial({
+            color: 0x6a8ec0,
+            emissive: new THREE.Color(0x1a2a4a),
+            roughness: 0.4,
+            emissiveIntensity: 0.6
+        });
+        const sphereGeo = new THREE.SphereGeometry(atomRadius, 16, 12);
+        perfectPositions.forEach((pos) => {
+            const sphere = new THREE.Mesh(sphereGeo, atomMaterial.clone());
+            sphere.position.copy(pos);
+            atomsGroup.add(sphere);
+            atomMeshes.push(sphere);
+        });
+        scene.add(atomsGroup);
+        const bondsGroup = new THREE.Group();
+        scene.add(bondsGroup);
+        const bondMaterial = new THREE.MeshStandardMaterial({
+            color: 0xb8a060,
+            emissive: new THREE.Color(0x2a2008),
+            roughness: 0.6,
+            emissiveIntensity: 0.3
+        });
+        const cylinderGeo = new THREE.CylinderGeometry(bondRadius, bondRadius, 1, 4);
+        function createBondMesh(posFrom, posTo) {
+            const from = posFrom.clone();
+            const to = posTo.clone();
+            const direction = new THREE.Vector3().subVectors(to, from);
+            const length = direction.length();
+            if (length < 0.1) return null;
+            const cylinder = new THREE.Mesh(cylinderGeo, bondMaterial);
+            const midPoint = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+            cylinder.position.copy(midPoint);
+            cylinder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+            cylinder.scale.set(1, length, 1);
+            return cylinder;
+        }
+        function rebuildBonds(positions) {
+            while(bondsGroup.children.length) bondsGroup.remove(bondsGroup.children[0]);
+            const posMap = new Map();
+            positions.forEach((pos, idx) => {
+                const {i, j, k} = latticeIndices[idx];
+                posMap.set(`${i},${j},${k}`, pos);
+            });
+            const threshMin = 0.75 * a;
+            const threshMax = 1.35 * a;
+            const zExtendedMax = 1.9 * a;
+            for (let idx = 0; idx < latticeIndices.length; idx++) {
+                const {i, j, k} = latticeIndices[idx];
+                const posFrom = positions[idx];
+                const neighbors = [[1,0,0],[0,1,0],[0,0,1]];
+                for (let [di,dj,dk] of neighbors) {
+                    const ni = i+di, nj = j+dj, nk = k+dk;
+                    if (ni > xRange[1] || nj > yRange[1] || !zLayers.includes(nk)) continue;
+                    const posTo = posMap.get(`${ni},${nj},${nk}`);
+                    if (!posTo) continue;
+                    const dist = posFrom.distanceTo(posTo);
+                    if (dk === 1) {
+                        if (dist > threshMin && dist < zExtendedMax) {
+                            const bond = createBondMesh(posFrom, posTo);
+                            if (bond) bondsGroup.add(bond);
+                        }
+                    } else {
+                        if (dist > threshMin && dist < threshMax) {
+                            const bond = createBondMesh(posFrom, posTo);
+                            if (bond) bondsGroup.add(bond);
+                        }
+                    }
+                }
+            }
+        }
+        rebuildBonds(perfectPositions);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xb04040 });
+        const linePoints = [];
+        for (let z = -0.3; z <= 4.8; z+=0.15) linePoints.push(new THREE.Vector3(0, 0, z));
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const dislocationLine = new THREE.Line(lineGeo, lineMat);
+        scene.add(dislocationLine);
+        const glowCylinderMat = new THREE.MeshBasicMaterial({ color: 0x904040, transparent: true, opacity: 0.08 });
+        const coreGlow = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 5.2, 8), glowCylinderMat);
+        coreGlow.position.set(0, 0, 2.2);
+        scene.add(coreGlow);
+        const labelObjects = [];
+        function createLabel(text, pos, size='14px', col='#b8a880') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = col;
+            div.style.fontSize = size;
+            div.style.fontWeight = '500';
+            div.style.textShadow = '0 0 8px #1a2a4a';
+            div.style.padding = '3px 10px';
+            div.style.borderRadius = '20px';
+            div.style.background = 'rgba(20,25,35,0.6)';
+            div.style.backdropFilter = 'blur(4px)';
+            div.style.border = '1px solid '+col;
+            div.style.pointerEvents = 'none';
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            return label;
+        }
+        const label1 = createLabel('⚡ 位错线', new THREE.Vector3(0.7, 0.4, 4.2), '13px', '#c08080');
+        const label2 = createLabel('螺旋上升', new THREE.Vector3(2.0, -0.8, 2.5), '12px', '#9ab0d0');
+        const label3 = createLabel('原子面扭转', new THREE.Vector3(-2.2, 2.0, 3.0), '12px', '#9ab0d0');
+        scene.add(label1, label2, label3);
+        labelObjects.push(label1, label2, label3);
+        const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0.2, 1).normalize(), new THREE.Vector3(1.5, -0.6, 1.8), 0.7, 0x7a8fb0, 0.18, 0.1);
+        scene.add(arrow);
+        let labelsVisible = true;
+        const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
+        toggleLabelsBtn.addEventListener('click', () => {
+            labelsVisible = !labelsVisible;
+            labelObjects.forEach(o => o.visible = labelsVisible);
+            arrow.visible = labelsVisible;
+            toggleLabelsBtn.classList.toggle('toggle-on', labelsVisible);
+        });
+        let progress = 0.0;
+        let isPlaying = false;
+        let lastTime = performance.now();
+        const speed = 0.15;
+        const slider = document.getElementById('progressSlider');
+        const progressLabel = document.getElementById('progress-label');
+        const statusBadge = document.getElementById('status-badge');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        function updateAtomPositions(t) {
+            for (let i = 0; i < atomCount; i++) {
+                atomMeshes[i].position.lerpVectors(perfectPositions[i], finalPositions[i], t);
+            }
+            rebuildBonds(atomMeshes.map(m => m.position));
+            const percent = Math.round(t * 100);
+            progressLabel.textContent = percent + '%';
+            if (t < 0.05) statusBadge.innerHTML = '⚙️完美晶体';
+            else if (t > 0.95) statusBadge.innerHTML = '🧬螺型位错';
+            else statusBadge.innerHTML = '🔄键断裂重组';
+            dislocationLine.material.opacity = 0.3 + 0.7 * t;
+            coreGlow.material.opacity = 0.05 + 0.1 * t;
+        }
+        function setProgress(value) {
+            progress = Math.min(1, Math.max(0, value));
+            slider.value = progress;
+            updateAtomPositions(progress);
+        }
+        slider.addEventListener('input', (e) => {
+            setProgress(parseFloat(e.target.value));
+            isPlaying = false;
+            playPauseBtn.textContent = '▶';
+        });
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playPauseBtn.textContent = isPlaying ? '⏸' : '▶';
+            if (isPlaying) lastTime = performance.now();
+            if (isPlaying && progress >= 0.99) setProgress(0);
+        });
+        resetBtn.addEventListener('click', () => {
+            isPlaying = false;
+            playPauseBtn.textContent = '▶';
+            setProgress(0);
+        });
+        const uiElements = [
+            document.getElementById('info'),
+            document.getElementById('caption'),
+            document.getElementById('controls-hint'),
+            document.getElementById('animation-panel')
+        ];
+        const toggleUIBtn = document.getElementById('toggleUI');
+        let uiVisible = true;
+        toggleUIBtn.addEventListener('click', () => {
+            uiVisible = !uiVisible;
+            uiElements.forEach(el => el.style.display = uiVisible ? '' : 'none');
+            if (!uiVisible) {
+                labelObjects.forEach(o => o.visible = false);
+                arrow.visible = false;
+            } else {
+                labelObjects.forEach(o => o.visible = labelsVisible);
+                arrow.visible = labelsVisible;
+            }
+            toggleUIBtn.classList.toggle('hidden-mode', !uiVisible);
+            toggleUIBtn.innerHTML = uiVisible ? '👁️' : '👁️‍🗨️';
+            toggleUIBtn.title = uiVisible ? '隐藏界面' : '显示界面';
+        });
+        function animate(time) {
+            requestAnimationFrame(animate);
+            if (isPlaying) {
+                const delta = Math.min(0.1, (time - lastTime) / 1000);
+                lastTime = time;
+                let newProgress = progress + delta * speed;
+                if (newProgress >= 1.0) {
+                    newProgress = 1.0;
+                    isPlaying = false;
+                    playPauseBtn.textContent = '▶';
+                }
+                setProgress(newProgress);
+            }
+            controls.update();
+            stars.rotation.y += 0.0002;
+            renderer.render(scene, camera);
+            css2DRenderer.render(scene, camera);
+        }
+        requestAnimationFrame(animate);
+        setProgress(0);
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            css2DRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        renderer.domElement.addEventListener('touchstart', e => e.preventDefault());
+        console.log('✅ 螺位错模型已加载，点击右上角眼睛图标可隐藏界面。');
+    </script>
+</body>
+</html>
+</textarea>
+
+<script>
+/* ============================================================
+   入口页逻辑：读取 textarea 中的模型源码 → Blob → iframe
+   ============================================================ */
+const MODELS = [
+  { name: '晶面与晶向', desc: 'SC / BCC / FCC / HCP · 晶面指数与晶向指数', srcId: 'model1' },
+  { name: 'BCC 点缺陷', desc: 'α-Fe · 异类原子替代与局部晶格畸变', srcId: 'model2' },
+  { name: '螺型位错',   desc: '螺旋位错的动态形成过程', srcId: 'model3' }
+];
+
+const menu    = document.getElementById('menu');
+const footer  = document.getElementById('footer');
+const stage   = document.getElementById('stage');
+const titleEl = document.getElementById('title');
+const subEl   = document.getElementById('subtitle');
+
+let currentIndex = -1;
+const frames = new Map();   // index -> wrapper DOM
+
+/* 侧边栏按钮 */
+MODELS.forEach((m, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-item';
+  btn.innerHTML = '<span class="name"></span><span class="desc"></span>';
+  btn.querySelector('.name').textContent = m.name;
+  btn.querySelector('.desc').textContent = m.desc || '';
+  btn.onclick = () => showModel(i);
+  menu.appendChild(btn);
+});
+
+footer.textContent = `共 ${MODELS.length} 个模型 · 切换后各自状态会保留`;
+
+/* 读取 textarea 中的完整 HTML 源码 */
+function getModelSource(srcId) {
+  const el = document.getElementById(srcId);
+  return el ? el.textContent : '';
+}
+
+/* 显示模型（懒加载 + 状态保留） */
+function showModel(i) {
+  const m = MODELS[i];
+  if (!m) return;
+
+  currentIndex = i;
+  titleEl.textContent = m.name;
+  subEl.textContent = m.desc || '';
+
+  if (!frames.has(i)) {
+    const wrap = document.createElement('div');
+    wrap.className = 'frame-wrap';
+
+    const loading = document.createElement('div');
+    loading.className = 'loading';
+    loading.innerHTML = '<div class="spinner"></div><span>模型加载中…</span>';
+
+    const iframe = document.createElement('iframe');
+    iframe.title = m.name;
+
+    // 用 Blob URL 加载内嵌源码，相当于一个独立文档
+    const src  = getModelSource(m.srcId);
+    const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    iframe.src = url;
+
+    iframe.onload = () => {
+      loading.classList.add('hide');
+      URL.revokeObjectURL(url);   // 加载完成即可释放
+    };
+    iframe.onerror = () => {
+      loading.innerHTML = '<span>模型加载失败，请检查源码是否完整。</span>';
+    };
+
+    wrap.appendChild(loading);
+    wrap.appendChild(iframe);
+    stage.appendChild(wrap);
+    frames.set(i, wrap);
+  }
+
+  frames.forEach((wrap, k) => wrap.classList.toggle('active', k === i));
+  [...menu.children].forEach((b, k) => b.classList.toggle('active', k === i));
+}
+
+/* 顶部按钮 */
+document.getElementById('reload').onclick = () => {
+  if (currentIndex < 0) return;
+  const wrap = frames.get(currentIndex);
+  const iframe = wrap && wrap.querySelector('iframe');
+  if (!iframe) return;
+  wrap.querySelector('.loading').classList.remove('hide');
+  const src  = getModelSource(MODELS[currentIndex].srcId);
+  const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  iframe.src = url;
+  iframe.onload = () => {
+    wrap.querySelector('.loading').classList.add('hide');
+    URL.revokeObjectURL(url);
+  };
+};
+
+document.getElementById('fullscreen').onclick = () => {
+  const el = stage;
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+  }
+};
+
+/* 默认打开第一个 */
+if (MODELS.length) showModel(0);
+</script>
+</body>
+</html>
